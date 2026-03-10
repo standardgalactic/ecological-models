@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eco-Climate Laboratory</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #5b6673;
+      --border: #d9e0e7;
+      --accent: #1f6feb;
+      --shadow: 0 10px 25px rgba(18, 38, 63, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    header {
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 2rem;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      max-width: 980px;
+      margin: 0;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .controls {
+      padding: 18px;
+      position: sticky;
+      top: 20px;
+    }
+
+    .controls h2,
+    .plots h2,
+    .notes h2 {
+      margin: 0 0 14px 0;
+      font-size: 1.05rem;
+    }
+
+    .group {
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+
+    .group:first-of-type {
+      border-top: 0;
+      margin-top: 0;
+      padding-top: 0;
+    }
+
+    .group-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin: 0 0 10px 0;
+      color: var(--text);
+    }
+
+    .control {
+      margin-bottom: 14px;
+    }
+
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .control .value {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .control input[type="range"] {
+      width: 100%;
+    }
+
+    .control .hint {
+      margin-top: 4px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    button,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .right {
+      display: grid;
+      gap: 20px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      padding: 16px;
+    }
+
+    .metric .k {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .metric .v {
+      font-size: 1.4rem;
+      font-weight: 750;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .plots {
+      padding: 16px;
+    }
+
+    .plot-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    .plot {
+      width: 100%;
+      height: 360px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .notes {
+      padding: 18px;
+      color: var(--muted);
+    }
+
+    .notes p {
+      margin: 0 0 12px 0;
+    }
+
+    @media (max-width: 1100px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        position: static;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 700px) {
+      .wrap {
+        padding: 14px;
+      }
+
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        grid-template-columns: 1fr;
+      }
+
+      .plot {
+        height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Eco-Climate Laboratory</h1>
+      <p class="subtitle">
+        This single-file application turns the reduced-form notebook into an interactive browser model. It couples a two-box climate response to atmospheric CO₂, a simple ecological land sink, ocean uptake, an optional N₂O module, and a stylized built-surface forcing term representing urban and road expansion. The goal is not precision forecasting, but structural experimentation across centuries.
+      </p>
+    </header>
+
+    <section style="margin-bottom:28px;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">
+
+    <div class="panel" style="padding:16px;border:1px solid var(--border);background:var(--surface);border-radius:10px;">
+      <div style="font-family:var(--mono);font-size:0.65rem;color:var(--accent2);margin-bottom:6px;">Scenario</div>
+      <div style="font-weight:700;margin-bottom:6px;">Baseline System</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);line-height:1.6;margin-bottom:10px;">
+        Emissions peak early and decline gradually while urban expansion continues at moderate rates. This run illustrates the intrinsic thermal inertia of the climate system and the slow relaxation of the carbon cycle over centuries.
+      </div>
+      <button data-sim="baseline" class="scenarioRun">Run simulation</button>
+    </div>
+
+    <div class="panel" style="padding:16px;border:1px solid var(--border);background:var(--surface);border-radius:10px;">
+      <div style="font-family:var(--mono);font-size:0.65rem;color:var(--accent3);margin-bottom:6px;">Infrastructure experiment</div>
+      <div style="font-weight:700;margin-bottom:6px;">Urban Acceleration</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);line-height:1.6;margin-bottom:10px;">
+        Infrastructure expands rapidly and impervious surfaces grow faster than ecological recovery. The simulation highlights how urban form can indirectly amplify warming by weakening land carbon uptake.
+      </div>
+      <button data-sim="highUrban" class="scenarioRun">Run simulation</button>
+    </div>
+
+    <div class="panel" style="padding:16px;border:1px solid var(--border);background:var(--surface);border-radius:10px;">
+      <div style="font-family:var(--mono);font-size:0.65rem;color:var(--accent);margin-bottom:6px;">Ecological restoration</div>
+      <div style="font-weight:700;margin-bottom:6px;">Restoration Pathway</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);line-height:1.6;margin-bottom:10px;">
+        Large-scale depaving and land restoration increase biological productivity and strengthen terrestrial carbon sinks. This experiment explores whether infrastructure redesign can shift long-term climate trajectories.
+      </div>
+      <button data-sim="restoration" class="scenarioRun">Run simulation</button>
+    </div>
+
+    <div class="panel" style="padding:16px;border:1px solid var(--border);background:var(--surface);border-radius:10px;">
+      <div style="font-family:var(--mono);font-size:0.65rem;color:var(--accent4);margin-bottom:6px;">Atmospheric chemistry</div>
+      <div style="font-weight:700;margin-bottom:6px;">High N₂O World</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);line-height:1.6;margin-bottom:10px;">
+        Agricultural emissions of nitrous oxide remain high while atmospheric lifetimes lengthen. This scenario explores how trace-gas forcing interacts with CO₂-driven warming over multi-century horizons.
+      </div>
+      <button data-sim="n2oHeavy" class="scenarioRun">Run simulation</button>
+    </div>
+
+  </div>
+</section>
+
+<div class="layout">
+      <aside class="panel controls">
+        <h2>Controls</h2>
+
+        <div class="group">
+          <div class="group-title">Sample simulations</div>
+          <div class="control">
+            <select id="preset">
+              <option value="baseline">Baseline decline</option>
+              <option value="highUrban">Rapid urban expansion</option>
+              <option value="restoration">Restoration and depaving</option>
+              <option value="n2oHeavy">Elevated N₂O pressure</option>
+            </select>
+          </div>
+          <div class="hint" id="scenarioDescription" style="margin-top:10px; line-height:1.6;">
+            Baseline scenario: emissions peak early and gradually decline while urban expansion proceeds at moderate rates. This trajectory illustrates the typical behavior of the coupled climate–carbon system when infrastructure growth and mitigation evolve slowly.
+          </div>
+          <div style="margin-top:10px; display:grid; gap:6px;">
+            <button class="plot-tab" data-sim="baseline">Baseline system</button>
+            <button class="plot-tab" data-sim="highUrban">Urban acceleration experiment</button>
+            <button class="plot-tab" data-sim="restoration">Large‑scale restoration experiment</button>
+            <button class="plot-tab" data-sim="n2oHeavy">High agricultural N₂O world</button>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-title">Time and emissions</div>
+          <div class="control">
+            <label for="years"><span>Simulation years</span><span class="value" id="yearsValue"></span></label>
+            <input id="years" type="range" min="100" max="1000" step="50" value="600" />
+          </div>
+          <div class="control">
+            <label for="peakCO2"><span>Peak CO₂ emissions</span><span class="value" id="peakCO2Value"></span></label>
+            <input id="peakCO2" type="range" min="10" max="80" step="1" value="40" />
+            <div class="hint">GtCO₂ per year at the emissions peak.</div>
+          </div>
+          <div class="control">
+            <label for="tPeakCO2"><span>CO₂ peak timing</span><span class="value" id="tPeakCO2Value"></span></label>
+            <input id="tPeakCO2" type="range" min="5" max="100" step="1" value="20" />
+            <div class="hint">Years until peak anthropogenic CO₂ emissions.</div>
+          </div>
+          <div class="control">
+            <label for="declineTauCO2"><span>CO₂ decline timescale</span><span class="value" id="declineTauCO2Value"></span></label>
+            <input id="declineTauCO2" type="range" min="10" max="200" step="1" value="60" />
+            <div class="hint">Larger values imply slower decarbonization.</div>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-title">Carbon sink and climate response</div>
+          <div class="control">
+            <label for="landSink0"><span>Baseline land sink</span><span class="value" id="landSink0Value"></span></label>
+            <input id="landSink0" type="range" min="0" max="6" step="0.1" value="2.5" />
+          </div>
+          <div class="control">
+            <label for="betaCO2"><span>CO₂ fertilization strength</span><span class="value" id="betaCO2Value"></span></label>
+            <input id="betaCO2" type="range" min="0" max="0.8" step="0.01" value="0.25" />
+          </div>
+          <div class="control">
+            <label for="gammaT"><span>Heat stress on land sink</span><span class="value" id="gammaTValue"></span></label>
+            <input id="gammaT" type="range" min="0" max="0.15" step="0.005" value="0.04" />
+          </div>
+          <div class="control">
+            <label for="lambdaClim"><span>Climate feedback λ</span><span class="value" id="lambdaClimValue"></span></label>
+            <input id="lambdaClim" type="range" min="0.5" max="2.0" step="0.05" value="1.1" />
+          </div>
+          <div class="control">
+            <label for="kappa"><span>Ocean heat exchange κ</span><span class="value" id="kappaValue"></span></label>
+            <input id="kappa" type="range" min="0.1" max="1.5" step="0.05" value="0.65" />
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-title">Built environment</div>
+          <div class="control">
+            <label for="urbanMax"><span>Urban coverage ceiling</span><span class="value" id="urbanMaxValue"></span></label>
+            <input id="urbanMax" type="range" min="0" max="0.25" step="0.005" value="0.08" />
+            <div class="hint">Fraction of land shifted into urbanized form.</div>
+          </div>
+          <div class="control">
+            <label for="roadMax"><span>Road coverage ceiling</span><span class="value" id="roadMaxValue"></span></label>
+            <input id="roadMax" type="range" min="0" max="0.12" step="0.002" value="0.03" />
+          </div>
+          <div class="control">
+            <label for="urbanGrowth"><span>Urban expansion rate</span><span class="value" id="urbanGrowthValue"></span></label>
+            <input id="urbanGrowth" type="range" min="0.005" max="0.08" step="0.001" value="0.02" />
+          </div>
+          <div class="control">
+            <label for="roadGrowth"><span>Road expansion rate</span><span class="value" id="roadGrowthValue"></span></label>
+            <input id="roadGrowth" type="range" min="0.005" max="0.08" step="0.001" value="0.018" />
+          </div>
+          <div class="control">
+            <label for="builtForcingCoeff"><span>Built-surface forcing coefficient</span><span class="value" id="builtForcingCoeffValue"></span></label>
+            <input id="builtForcingCoeff" type="range" min="0" max="8" step="0.1" value="2.4" />
+            <div class="hint">Scales urban and road heat contribution.</div>
+          </div>
+          <div class="control">
+            <label for="depaving"><span>Restoration / depaving fraction</span><span class="value" id="depavingValue"></span></label>
+            <input id="depaving" type="range" min="0" max="1" step="0.01" value="0.1" />
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="group-title">N₂O module</div>
+          <div class="control">
+            <label for="peakN2O"><span>Peak N₂O emissions</span><span class="value" id="peakN2OValue"></span></label>
+            <input id="peakN2O" type="range" min="0" max="30" step="0.5" value="14" />
+            <div class="hint">TgN per year.</div>
+          </div>
+          <div class="control">
+            <label for="tauTrend"><span>N₂O lifetime trend</span><span class="value" id="tauTrendValue"></span></label>
+            <input id="tauTrend" type="range" min="-3" max="3" step="0.1" value="-1.4" />
+            <div class="hint">Percent per decade.</div>
+          </div>
+          <div class="control">
+            <label for="kN"><span>N₂O forcing coefficient</span><span class="value" id="kNValue"></span></label>
+            <input id="kN" type="range" min="0" max="0.01" step="0.0001" value="0.003" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="runBtn">Run simulation</button>
+          <button id="resetBtn">Reset defaults</button>
+          <button id="compareBtn">Set baseline</button>
+          <button id="saveRunBtn">Save run</button>
+          <button id="clearRunsBtn">Clear runs</button>
+          <button id="crtToggle">CRT mode</button>
+          <button id="exportJSON">Export JSON</button>
+        </div>
+      </aside>
+
+      <section class="right">
+        <div class="metrics">
+          <div class="panel metric"><div class="k">Peak warming</div><div class="v" id="metricPeakWarm">–</div></div>
+          <div class="panel metric"><div class="k">Final warming</div><div class="v" id="metricFinalWarm">–</div></div>
+          <div class="panel metric"><div class="k">Peak CO₂</div><div class="v" id="metricPeakCO2">–</div></div>
+          <div class="panel metric"><div class="k">Final N₂O</div><div class="v" id="metricFinalN2O">–</div></div>
+        </div>
+
+        <div class="panel plots">
+          <h2>Trajectories</h2>
+          <div class="plot-grid">
+            <div id="tempPlot" class="plot"></div>
+            <div id="co2Plot" class="plot"></div>
+            <div id="fluxPlot" class="plot"></div>
+            <div id="forcingPlot" class="plot"></div>
+            <div id="builtPlot" class="plot"></div>
+          </div>
+        </div>
+
+        <div class="panel notes">
+          <h2>Interpretive notes</h2>
+          <p>
+            The urban and road modules are stylized trajectories rather than empirical reconstructions. Their purpose is to expose one specific structural idea from your notebook: infrastructure can alter climate not only through direct forcing but by shrinking biologically productive land and weakening terrestrial uptake.
+          </p>
+          <p>
+            Because all components are transparent, you can readily replace any pathway with empirical data, add scenario import hooks, or split the system into multiple tabs such as atmosphere, biosphere, and urban form.
+          </p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULTS = {
+      years: 600,
+      peakCO2: 40,
+      tPeakCO2: 20,
+      declineTauCO2: 60,
+      landSink0: 2.5,
+      betaCO2: 0.25,
+      gammaT: 0.04,
+      lambdaClim: 1.1,
+      kappa: 0.65,
+      urbanMax: 0.08,
+      roadMax: 0.03,
+      urbanGrowth: 0.02,
+      roadGrowth: 0.018,
+      builtForcingCoeff: 2.4,
+      depaving: 0.10,
+      peakN2O: 14,
+      tauTrend: -1.4,
+      kN: 0.003
+    };
+
+    const RANGES = {
+      years: 'years',
+      peakCO2: 'GtCO₂/yr',
+      tPeakCO2: 'yr',
+      declineTauCO2: 'yr',
+      landSink0: 'GtCO₂/yr',
+      betaCO2: '',
+      gammaT: '1/°C',
+      lambdaClim: 'W/m²/°C',
+      kappa: 'W/m²/°C',
+      urbanMax: 'fraction',
+      roadMax: 'fraction',
+      urbanGrowth: '/yr',
+      roadGrowth: '/yr',
+      builtForcingCoeff: 'W/m²',
+      depaving: 'fraction',
+      peakN2O: 'TgN/yr',
+      tauTrend: '%/decade',
+      kN: 'W/m²/ppb'
+    };
+
+    function formatValue(key, value) {
+      if (key === 'years' || key === 'tPeakCO2' || key === 'declineTauCO2') return `${Math.round(value)} ${RANGES[key]}`;
+      if (key === 'peakCO2' || key === 'landSink0' || key === 'peakN2O') return `${Number(value).toFixed(1)} ${RANGES[key]}`;
+      if (key === 'tauTrend') return `${Number(value).toFixed(1)} ${RANGES[key]}`;
+      if (['urbanMax','roadMax','urbanGrowth','roadGrowth','depaving','betaCO2','gammaT','kN','builtForcingCoeff','lambdaClim','kappa'].includes(key)) return `${Number(value).toFixed(3)}${RANGES[key] ? ' ' + RANGES[key] : ''}`;
+      return String(value);
+    }
+
+    function updateLabels() {
+      Object.keys(DEFAULTS).forEach(key => {
+        const el = document.getElementById(key);
+        const out = document.getElementById(key + 'Value');
+        if (el && out) out.textContent = formatValue(key, parseFloat(el.value));
+      });
+    }
+
+    function logistic(t, L, k, tMid) {
+      return L / (1 + Math.exp(-k * (t - tMid)));
+    }
+
+    function n2oLifetimeYears(tYear, tau0, trendPctPerDecade, feedbackStrength, NRef, Nppb, useFeedback) {
+      const trendPerYear = (trendPctPerDecade / 100) / 10;
+      let tau = tau0 * Math.exp(trendPerYear * tYear);
+      if (useFeedback) {
+        tau *= Math.pow(Math.max(Nppb, 1e-9) / NRef, feedbackStrength);
+      }
+      return tau;
+    }
+
+    function simulate(params) {
+      const dt = 1 / 12;
+      const years = params.years;
+      const n = Math.floor(years / dt) + 1;
+      const ppmToGtCO2 = 7.77;
+      const GtCO2ToPpm = 1 / ppmToGtCO2;
+      const TgNPerPpb = 4.79;
+      const ppbPerTgN = 1 / TgNPerPpb;
+
+      const C0 = 280.0;
+      const CInit = 420.0;
+      const N0 = 270.0;
+      const NInit = 337.0;
+      const F2x = 3.7;
+      const Cm = 8.0;
+      const Cd = 100.0;
+      const airborneBase = 0.45;
+      const tauAtm = 120.0;
+      const oceanSink0 = 2.3;
+      const oceanK = 0.015;
+      const oceanTSupp = 0.02;
+      const tauN0 = 117.0;
+      const tauFeedbackStrength = -0.065;
+      const NRef = 330.0;
+
+      const t = new Array(n).fill(0);
+      const CO2 = new Array(n).fill(0);
+      const N2O = new Array(n).fill(0);
+      const Tm = new Array(n).fill(0);
+      const Td = new Array(n).fill(0);
+      const ECO2 = new Array(n).fill(0);
+      const EN2O = new Array(n).fill(0);
+      const landSink = new Array(n).fill(0);
+      const oceanSink = new Array(n).fill(0);
+      const builtForcing = new Array(n).fill(0);
+      const urbanFrac = new Array(n).fill(0);
+      const roadFrac = new Array(n).fill(0);
+      const effectiveLandFrac = new Array(n).fill(0);
+      const tauN = new Array(n).fill(0);
+      const Fco2 = new Array(n).fill(0);
+      const Fn2o = new Array(n).fill(0);
+      const Ftotal = new Array(n).fill(0);
+
+      CO2[0] = CInit;
+      N2O[0] = NInit;
+
+      function emissionsCO2(tYear) {
+        if (tYear <= params.tPeakCO2) return params.peakCO2 * (tYear / params.tPeakCO2);
+        return params.peakCO2 * Math.exp(-(tYear - params.tPeakCO2) / params.declineTauCO2);
+      }
+
+      function emissionsN2O(tYear) {
+        const peakT = 30;
+        const declineTau = 120;
+        if (tYear <= peakT) return params.peakN2O * (tYear / peakT);
+        return params.peakN2O * Math.exp(-(tYear - peakT) / declineTau);
+      }
+
+      const urbanMid = years * 0.22;
+      const roadMid = years * 0.18;
+
+      for (let i = 0; i < n; i++) t[i] = i * dt;
+
+      for (let i = 0; i < n - 1; i++) {
+        const ti = t[i];
+        ECO2[i] = emissionsCO2(ti);
+        EN2O[i] = emissionsN2O(ti);
+
+        const rawUrban = logistic(ti, params.urbanMax, params.urbanGrowth, urbanMid);
+        const rawRoad = logistic(ti, params.roadMax, params.roadGrowth, roadMid);
+
+        urbanFrac[i] = rawUrban * (1 - 0.6 * params.depaving);
+        roadFrac[i] = rawRoad * (1 - params.depaving);
+        effectiveLandFrac[i] = Math.max(0.05, 1 - urbanFrac[i] - roadFrac[i]);
+
+        const dC = CO2[i] - C0;
+        const fert = 1 + params.betaCO2 * Math.log(Math.max(CO2[i], 1e-6) / C0);
+        const heatStress = Math.max(0, 1 - params.gammaT * Math.max(Tm[i], 0));
+        const landAvailability = Math.pow(effectiveLandFrac[i], 1.15);
+        const landI = params.landSink0 * fert * heatStress * landAvailability;
+
+        const warmSupp = Math.max(0, 1 - oceanTSupp * Math.max(Tm[i], 0));
+        const oceanI = (oceanSink0 + oceanK * dC * ppmToGtCO2) * warmSupp;
+
+        landSink[i] = landI;
+        oceanSink[i] = oceanI;
+
+        const leak = (dC * ppmToGtCO2) / tauAtm;
+        const dMAtm = airborneBase * ECO2[i] - landI - oceanI - leak;
+        CO2[i + 1] = Math.max(1e-6, CO2[i] + dMAtm * GtCO2ToPpm * dt);
+
+        tauN[i] = n2oLifetimeYears(ti, tauN0, params.tauTrend, tauFeedbackStrength, NRef, N2O[i], true);
+        const NBurden = N2O[i] * TgNPerPpb;
+        const dNBurden = EN2O[i] - (NBurden / tauN[i]);
+        N2O[i + 1] = Math.max(0, (NBurden + dNBurden * dt) * ppbPerTgN);
+
+        Fco2[i] = F2x * Math.log(CO2[i] / C0) / Math.log(2);
+        Fn2o[i] = params.kN * (N2O[i] - N0);
+        builtForcing[i] = params.builtForcingCoeff * (urbanFrac[i] + 0.6 * roadFrac[i]) * (1 + 0.12 * Math.max(Tm[i], 0));
+        Ftotal[i] = Fco2[i] + Fn2o[i] + builtForcing[i];
+
+        const dTm = (Ftotal[i] - params.lambdaClim * Tm[i] - params.kappa * (Tm[i] - Td[i])) / Cm;
+        const dTd = (params.kappa * (Tm[i] - Td[i])) / Cd;
+        Tm[i + 1] = Tm[i] + dTm * dt;
+        Td[i + 1] = Td[i] + dTd * dt;
+      }
+
+      const last = n - 1;
+      urbanFrac[last] = logistic(t[last], params.urbanMax, params.urbanGrowth, urbanMid) * (1 - 0.6 * params.depaving);
+      roadFrac[last] = logistic(t[last], params.roadMax, params.roadGrowth, roadMid) * (1 - params.depaving);
+      effectiveLandFrac[last] = Math.max(0.05, 1 - urbanFrac[last] - roadFrac[last]);
+      tauN[last] = n2oLifetimeYears(t[last], tauN0, params.tauTrend, tauFeedbackStrength, NRef, N2O[last], true);
+      Fco2[last] = F2x * Math.log(CO2[last] / C0) / Math.log(2);
+      Fn2o[last] = params.kN * (N2O[last] - N0);
+      builtForcing[last] = params.builtForcingCoeff * (urbanFrac[last] + 0.6 * roadFrac[last]) * (1 + 0.12 * Math.max(Tm[last], 0));
+      Ftotal[last] = Fco2[last] + Fn2o[last] + builtForcing[last];
+      ECO2[last] = emissionsCO2(t[last]);
+      EN2O[last] = emissionsN2O(t[last]);
+
+      const dCLast = CO2[last] - C0;
+      const fertLast = 1 + params.betaCO2 * Math.log(Math.max(CO2[last], 1e-6) / C0);
+      const heatStressLast = Math.max(0, 1 - params.gammaT * Math.max(Tm[last], 0));
+      landSink[last] = params.landSink0 * fertLast * heatStressLast * Math.pow(effectiveLandFrac[last], 1.15);
+      oceanSink[last] = (oceanSink0 + oceanK * dCLast * ppmToGtCO2) * Math.max(0, 1 - oceanTSupp * Math.max(Tm[last], 0));
+
+      return { t, CO2, N2O, Tm, Td, ECO2, EN2O, landSink, oceanSink, builtForcing, urbanFrac, roadFrac, effectiveLandFrac, tauN, Fco2, Fn2o, Ftotal };
+    }
+
+    function layout(title, yTitle) {
+      return {
+        margin: { l: 58, r: 20, t: 48, b: 48 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+        title: { text: title, x: 0.02, xanchor: 'left', font: { size: 18 } },
+        xaxis: { title: 'Years from start', gridcolor: '#edf1f5', zerolinecolor: '#edf1f5' },
+        yaxis: { title: yTitle, gridcolor: '#edf1f5', zerolinecolor: '#edf1f5' },
+        legend: { orientation: 'h', y: 1.12 }
+      };
+    }
+
+    let compareOutput = null;
+let runStack = [];
+
+function render(out) {
+
+  const tracesTemp = [
+    { x: out.t, y: out.Tm, type: 'scatter', mode: 'lines', name: 'Mixed layer temperature' },
+    { x: out.t, y: out.Td, type: 'scatter', mode: 'lines', name: 'Deep ocean temperature' }
+  ];
+
+  runStack.forEach((r,i)=>{
+    tracesTemp.push({x:r.t,y:r.Tm,type:'scatter',mode:'lines',line:{dash:'dot'},name:`run ${i+1} temp`});
+  });
+
+  Plotly.newPlot('tempPlot', tracesTemp, layout('Temperature response', '°C'));
+
+  const tracesCO2 = [
+    { x: out.t, y: out.CO2, type: 'scatter', mode: 'lines', name: 'CO₂ (ppm)' },
+    { x: out.t, y: out.N2O, type: 'scatter', mode: 'lines', name: 'N₂O (ppb)', yaxis: 'y2' }
+  ];
+
+  runStack.forEach((r,i)=>{
+    tracesCO2.push({x:r.t,y:r.CO2,type:'scatter',mode:'lines',line:{dash:'dot'},name:`run ${i+1} CO₂`});
+  });
+
+  Plotly.newPlot('co2Plot', tracesCO2, {
+    ...layout('Atmospheric composition', 'CO₂ (ppm)'),
+    yaxis2: { title: 'N₂O (ppb)', overlaying: 'y', side: 'right', gridcolor: '#edf1f5' }
+  });
+
+  Plotly.newPlot('fluxPlot', [
+    { x: out.t, y: out.ECO2, type: 'scatter', mode: 'lines', name: 'CO₂ emissions' },
+    { x: out.t, y: out.landSink, type: 'scatter', mode: 'lines', name: 'Land sink' },
+    { x: out.t, y: out.oceanSink, type: 'scatter', mode: 'lines', name: 'Ocean sink' }
+  ], layout('Carbon fluxes', 'GtCO₂ / year'));
+
+  Plotly.newPlot('forcingPlot', [
+    { x: out.t, y: out.Fco2, type: 'scatter', mode: 'lines', name: 'CO₂ forcing' },
+    { x: out.t, y: out.Fn2o, type: 'scatter', mode: 'lines', name: 'N₂O forcing' },
+    { x: out.t, y: out.builtForcing, type: 'scatter', mode: 'lines', name: 'Built-surface forcing' },
+    { x: out.t, y: out.Ftotal, type: 'scatter', mode: 'lines', name: 'Total forcing' }
+  ], layout('Radiative forcing components', 'W/m²'));
+
+  Plotly.newPlot('builtPlot', [
+    { x: out.t, y: out.urbanFrac, type: 'scatter', mode: 'lines', name: 'Urban fraction' },
+    { x: out.t, y: out.roadFrac, type: 'scatter', mode: 'lines', name: 'Road fraction' },
+    { x: out.t, y: out.effectiveLandFrac, type: 'scatter', mode: 'lines', name: 'Effective land fraction' }
+  ], layout('Built environment and land availability', 'Fraction of land'));
+
+  const maxWarm = Math.max(...out.Tm);
+  const finalWarm = out.Tm[out.Tm.length - 1];
+  const peakCO2 = Math.max(...out.CO2);
+  const finalN2O = out.N2O[out.N2O.length - 1];
+
+  document.getElementById('metricPeakWarm').textContent = `${maxWarm.toFixed(2)} °C`;
+  document.getElementById('metricFinalWarm').textContent = `${finalWarm.toFixed(2)} °C`;
+  document.getElementById('metricPeakCO2').textContent = `${peakCO2.toFixed(0)} ppm`;
+  document.getElementById('metricFinalN2O').textContent = `${finalN2O.toFixed(1)} ppb`;
+}
+      const base = compareOutput;
+
+      const maybeDash = (trace,name)=> base ? [{...trace,name:name},{...trace,x:base.t,y:base[name==='Mixed layer temperature'? 'Tm':name==='Deep ocean temperature'?'Td':name==='CO₂ (ppm)'?'CO2':name==='N₂O (ppb)'?'N2O':name==='CO₂ emissions'?'ECO2':name==='Land sink'?'landSink':name==='Ocean sink'?'oceanSink':name==='CO₂ forcing'?'Fco2':name==='N₂O forcing'?'Fn2o':name==='Built-surface forcing'?'builtForcing':name==='Total forcing'?'Ftotal':name==='Urban fraction'?'urbanFrac':name==='Road fraction'?'roadFrac':'effectiveLandFrac'],line:{dash:'dot'},name:name+' (baseline)'}] : [trace];
+      Plotly.newPlot('tempPlot', [
+        { x: out.t, y: out.Tm, type: 'scatter', mode: 'lines', name: 'Mixed layer temperature' },
+        { x: out.t, y: out.Td, type: 'scatter', mode: 'lines', name: 'Deep ocean temperature' }
+      ], layout('Temperature response', '°C'));
+
+      Plotly.newPlot('co2Plot', [
+        { x: out.t, y: out.CO2, type: 'scatter', mode: 'lines', name: 'CO₂ (ppm)' },
+        { x: out.t, y: out.N2O, type: 'scatter', mode: 'lines', name: 'N₂O (ppb)', yaxis: 'y2' }
+      ], {
+        ...layout('Atmospheric composition', 'CO₂ (ppm)'),
+        yaxis2: { title: 'N₂O (ppb)', overlaying: 'y', side: 'right', gridcolor: '#edf1f5' }
+      });
+
+      Plotly.newPlot('fluxPlot', [
+        { x: out.t, y: out.ECO2, type: 'scatter', mode: 'lines', name: 'CO₂ emissions' },
+        { x: out.t, y: out.landSink, type: 'scatter', mode: 'lines', name: 'Land sink' },
+        { x: out.t, y: out.oceanSink, type: 'scatter', mode: 'lines', name: 'Ocean sink' }
+      ], layout('Carbon fluxes', 'GtCO₂ / year'));
+
+      Plotly.newPlot('forcingPlot', [
+        { x: out.t, y: out.Fco2, type: 'scatter', mode: 'lines', name: 'CO₂ forcing' },
+        { x: out.t, y: out.Fn2o, type: 'scatter', mode: 'lines', name: 'N₂O forcing' },
+        { x: out.t, y: out.builtForcing, type: 'scatter', mode: 'lines', name: 'Built-surface forcing' },
+        { x: out.t, y: out.Ftotal, type: 'scatter', mode: 'lines', name: 'Total forcing' }
+      ], layout('Radiative forcing components', 'W/m²'));
+
+      Plotly.newPlot('builtPlot', [
+        { x: out.t, y: out.urbanFrac, type: 'scatter', mode: 'lines', name: 'Urban fraction' },
+        { x: out.t, y: out.roadFrac, type: 'scatter', mode: 'lines', name: 'Road fraction' },
+        { x: out.t, y: out.effectiveLandFrac, type: 'scatter', mode: 'lines', name: 'Effective land fraction' }
+      ], layout('Built environment and land availability', 'Fraction of land'));
+
+      const maxWarm = Math.max(...out.Tm);
+      const finalWarm = out.Tm[out.Tm.length - 1];
+      const peakCO2 = Math.max(...out.CO2);
+      const finalN2O = out.N2O[out.N2O.length - 1];
+
+      document.getElementById('metricPeakWarm').textContent = `${maxWarm.toFixed(2)} °C`;
+      document.getElementById('metricFinalWarm').textContent = `${finalWarm.toFixed(2)} °C`;
+      document.getElementById('metricPeakCO2').textContent = `${peakCO2.toFixed(0)} ppm`;
+      document.getElementById('metricFinalN2O').textContent = `${finalN2O.toFixed(1)} ppb`;
+    }
+
+    function readParams() {
+      const params = {};
+      Object.keys(DEFAULTS).forEach(key => {
+        params[key] = parseFloat(document.getElementById(key).value);
+      });
+      return params;
+    }
+
+    function setParams(obj) {
+      Object.keys(obj).forEach(key => {
+        if (document.getElementById(key)) {
+          document.getElementById(key).value = obj[key];
+        }
+      });
+      updateLabels();
+    }
+
+    function applyPreset(name) {
+      if (name === 'baseline') {
+        /* ── CRT MODE ───────────────────────────────────────── */
+
+    let crtEnabled = false;
+
+    function toggleCRT() {
+      crtEnabled = !crtEnabled;
+      const btn = document.getElementById('crtToggle');
+
+      if (crtEnabled) {
+        document.body.style.filter = 'contrast(1.2) brightness(1.05) saturate(1.1)';
+
+        if (!document.getElementById('crtScan')) {
+          const scan = document.createElement('div');
+          scan.id = 'crtScan';
+          scan.style.position = 'fixed';
+          scan.style.inset = '0';
+          scan.style.pointerEvents = 'none';
+          scan.style.zIndex = '9999';
+          scan.style.background = 'repeating-linear-gradient(rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 1px, transparent 2px, transparent 4px)';
+          document.body.appendChild(scan);
+        }
+
+        btn.textContent = 'CRT on';
+      } else {
+        document.body.style.filter = '';
+        const scan = document.getElementById('crtScan');
+        if (scan) scan.remove();
+        btn.textContent = 'CRT mode';
+      }
+    }
+
+    /* ── JSON EXPORT ───────────────────────────────────── */
+
+    function exportJSON() {
+      if (!lastOutput) return;
+
+      const serializable = {};
+      Object.entries(lastOutput).forEach(([k, v]) => {
+        serializable[k] = Array.from(v);
+      });
+
+      const blob = new Blob([
+        JSON.stringify({ params: readParams(), output: serializable }, null, 2)
+      ], { type: 'application/json' });
+
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'eco_climate_simulation.json';
+      a.click();
+
+      URL.revokeObjectURL(a.href);
+    }
+
+    document.getElementById('crtToggle').addEventListener('click', toggleCRT);
+    document.getElementById('exportJSON').addEventListener('click', exportJSON);
+
+    setParams(DEFAULTS);
+
+    // scenario card buttons
+    document.querySelectorAll('.scenarioRun').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const key=btn.dataset.sim;
+        if(PRESETS[key]){
+          setParams(PRESETS[key]);
+          document.getElementById('preset').value=key;
+          runSimulation();
+        }
+      });
+    });
+      } else if (name === 'highUrban') {
+        setParams({
+          ...DEFAULTS,
+          urbanMax: 0.14,
+          roadMax: 0.055,
+          urbanGrowth: 0.035,
+          roadGrowth: 0.03,
+          builtForcingCoeff: 3.6,
+          depaving: 0.03,
+          declineTauCO2: 85
+        });
+      } else if (name === 'restoration') {
+        setParams({
+          ...DEFAULTS,
+          urbanMax: 0.06,
+          roadMax: 0.02,
+          urbanGrowth: 0.015,
+          roadGrowth: 0.012,
+          builtForcingCoeff: 1.6,
+          depaving: 0.55,
+          landSink0: 3.2,
+          declineTauCO2: 45
+        });
+      } else if (name === 'n2oHeavy') {
+        setParams({
+          ...DEFAULTS,
+          peakN2O: 22,
+          tauTrend: 0.8,
+          kN: 0.0045,
+          peakCO2: 46,
+          declineTauCO2: 75
+        });
+      }
+      runSimulation();
+    }
+
+    let lastOutput = null;
+
+    function runSimulation() {
+      const out = simulate(readParams());
+      lastOutput = out;
+      render(out);
+    }
+
+    Object.keys(DEFAULTS).forEach(key => {
+      const el = document.getElementById(key);
+      if (el) {
+        el.addEventListener('input', () => {
+          updateLabels();
+        });
+        el.addEventListener('change', runSimulation);
+      }
+    });
+
+    document.getElementById('compareBtn').addEventListener('click',()=>{ compareOutput = lastOutput ? JSON.parse(JSON.stringify(lastOutput)) : null; });
+    document.getElementById('saveRunBtn').addEventListener('click',()=>{ if(lastOutput) runStack.push(JSON.parse(JSON.stringify(lastOutput))); });
+    document.getElementById('clearRunsBtn').addEventListener('click',()=>{ runStack=[]; runSimulation(); });
+    document.getElementById('compareBtn').addEventListener('click',()=>{ compareOutput = lastOutput ? JSON.parse(JSON.stringify(lastOutput)) : null; });
+    document.getElementById('runBtn').addEventListener('click', runSimulation);
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      setParams(DEFAULTS);
+      document.getElementById('preset').value = 'baseline';
+      runSimulation();
+    });
+    document.getElementById('preset').addEventListener('change', e => applyPreset(e.target.value));
+
+    setParams(DEFAULTS);
+    runSimulation();
+  </script>
+</body>
+</html>
