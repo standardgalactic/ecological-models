@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ink Ecology</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+:root{
+  --bg:#08080a;--bg2:#0d0d10;--bg3:#121218;--panel:#0f0f14;
+  --border:#252530;--brite:#353545;
+  --green:#6fff50;--gdim:#2a6a1a;--gdark:#132210;
+  --amber:#ffbc30;--adim:#6a4a10;
+  --red:#ff3a2a;--rdim:#6a1a10;
+  --blue:#40aaff;--cyan:#40ffee;
+  --mag:#ff44cc;--mdim:#881844;
+  --vio:#b899ff;--vdim:#4a2888;
+  --white:#ddddc8;--dim:#44443a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--white);font-family:'Share Tech Mono',monospace;font-size:12px;min-height:100vh;overflow:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0,rgba(0,0,0,.12) 1px,transparent 1px,transparent 3px);pointer-events:none;z-index:1000;}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.65) 100%);pointer-events:none;z-index:999;}
+
+#hdr{display:flex;align-items:center;gap:16px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg2);}
+#hdr h1{font-family:'VT323',monospace;font-size:27px;color:var(--white);text-shadow:0 0 10px #ffffff33;letter-spacing:3px;}
+.sub{color:var(--dim);font-size:10px;letter-spacing:2px;text-transform:uppercase;}
+#stepd{margin-left:auto;font-family:'VT323',monospace;font-size:22px;color:var(--amber);text-shadow:0 0 8px #ffbc3066;}
+
+#ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 16px;border-bottom:1px solid var(--border);background:var(--bg2);}
+button{background:var(--bg3);border:1px solid var(--brite);color:var(--white);font-family:'Share Tech Mono',monospace;font-size:11px;padding:4px 11px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .1s;}
+button:hover{background:#1a1a22;border-color:var(--white);box-shadow:0 0 6px #ffffff22;}
+button.active{background:#1a1a22;border-color:var(--white);}
+button.danger{color:var(--red);border-color:var(--rdim);}
+button.danger:hover{background:#1a0808;border-color:var(--red);}
+.cgrp{display:flex;align-items:center;gap:5px;border-left:1px solid var(--border);padding-left:8px;}
+.clbl{color:var(--dim);font-size:10px;letter-spacing:1px;}
+select{background:var(--bg3);border:1px solid var(--brite);color:var(--amber);font-family:'Share Tech Mono',monospace;font-size:11px;padding:3px 6px;cursor:pointer;}
+
+#main{display:grid;grid-template-columns:1fr 268px;height:calc(100vh - 84px);overflow:hidden;}
+
+#ww{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);}
+#fbr{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--border);background:#0a0a0e;flex-shrink:0;}
+#fbr .tag{font-family:'VT323',monospace;font-size:16px;color:var(--dim);letter-spacing:2px;}
+#gs{flex:1;overflow:auto;padding:8px;}
+#fg{display:grid;gap:7px;}
+.fp{background:var(--panel);border:1px solid var(--border);}
+.fl{padding:3px 6px;font-size:9px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.ft{font-family:'VT323',monospace;font-size:13px;}
+.cw{position:relative;}
+canvas.fc{display:block;width:100%;image-rendering:pixelated;}
+.rnote{padding:4px 12px;font-size:9px;color:var(--dim);letter-spacing:1px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+
+#sb{display:flex;flex-direction:column;overflow:hidden;}
+#chw{flex:1;overflow:auto;padding:9px;}
+#chw h2{font-family:'VT323',monospace;font-size:15px;color:var(--dim);letter-spacing:3px;margin-bottom:7px;}
+.cb{margin-bottom:9px;}
+.cl{font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;display:flex;justify-content:space-between;}
+.cv{font-family:'VT323',monospace;font-size:13px;}
+canvas.ch{display:block;width:100%;border:1px solid var(--border);background:var(--bg);}
+
+#stats{padding:8px 9px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+.sr{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+.sk{color:var(--dim);font-size:9px;letter-spacing:1px;text-transform:uppercase;}
+.sv{font-family:'VT323',monospace;font-size:16px;}
+
+#params{border-top:1px solid var(--border);background:#0b0b10;max-height:220px;overflow:auto;padding:8px 9px;flex-shrink:0;}
+#params h3{font-family:'VT323',monospace;font-size:14px;color:var(--dim);letter-spacing:3px;margin-bottom:6px;}
+.pr{margin-bottom:7px;}
+.pl{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;}
+.pv{font-family:'VT323',monospace;font-size:13px;color:var(--amber);}
+input[type=range]{width:100%;accent-color:var(--amber);}
+
+#logw{border-top:1px solid var(--border);max-height:80px;overflow:auto;padding:0 9px 6px;flex-shrink:0;}
+#log{font-size:9px;color:var(--gdim);line-height:1.7;}
+.lw{color:var(--adim)!important;}
+.lc{color:var(--rdim)!important;}
+.lg{color:var(--dim)!important;}
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <h1>INK ECOLOGY</h1>
+  <span class="sub">PERMANENT · GRAPHITE · VOLATILE · FIDELITY vs SCALE vs SURVIVAL</span>
+  <span id="stepd">T=<span id="sn">0000</span></span>
+</div>
+
+<div id="ctrl">
+  <button id="bplay">▶ RUN</button>
+  <button id="bstep">STEP</button>
+  <button id="breset" class="danger">RESET</button>
+  <div class="cgrp"><span class="clbl">SPEED</span>
+    <select id="spd"><option value="500">SLOW</option><option value="150" selected>MED</option><option value="40">FAST</option><option value="8">MAX</option></select>
+  </div>
+  <div class="cgrp"><span class="clbl">SIZE</span>
+    <select id="sz"><option value="16" selected>16×16</option><option value="24">24×24</option><option value="32">32×32</option></select>
+  </div>
+  <div class="cgrp"><span class="clbl">REGIME</span>
+    <select id="regime">
+      <option value="balanced">BALANCED ECOLOGY</option>
+      <option value="dogma">DOGMA LOCK-IN</option>
+      <option value="speculation">SPECULATIVE FLOOD</option>
+      <option value="revision">REVISION ECOLOGY</option>
+    </select>
+  </div>
+  <div class="cgrp"><span class="clbl">VIEW</span>
+    <select id="vsel">
+      <option value="all">ALL FIELDS</option>
+      <option value="certainty">CERTAINTY INDEX</option>
+      <option value="entropy">ENTROPY</option>
+      <option value="grad">∇ ENTROPY</option>
+      <option value="permanent_text">PERMANENT TEXT</option>
+      <option value="graphite_text">GRAPHITE TEXT</option>
+      <option value="volatile_text">VOLATILE TEXT</option>
+      <option value="book">BOOK</option>
+      <option value="scroll">SCROLL</option>
+      <option value="memory">MEMORY</option>
+      <option value="labor">LABOR</option>
+      <option value="structure">LIBRARY/PRESS</option>
+    </select>
+  </div>
+</div>
+
+<div id="main">
+  <div id="ww">
+    <div id="fbr"><span class="tag">// TEXTUAL FIELD ECOLOGY — EPISTEMIC SUBSTRATE</span></div>
+    <div id="gs"><div id="fg"></div></div>
+    <div class="rnote">WHITE = PERMANENT (CERTAIN) · AMBER = GRAPHITE (REVISABLE) · MAGENTA = VOLATILE (SPECULATIVE)</div>
+  </div>
+
+  <div id="sb">
+    <div id="chw">
+      <h2>// DYNAMICS</h2>
+      <div class="cb"><div class="cl"><span>PERMANENT TEXT</span><span class="cv" id="cv-perm" style="color:var(--white)">—</span></div><canvas class="ch" id="ch-perm" height="44"></canvas></div>
+      <div class="cb"><div class="cl"><span>GRAPHITE TEXT</span><span class="cv" id="cv-graph" style="color:var(--amber)">—</span></div><canvas class="ch" id="ch-graph" height="44"></canvas></div>
+      <div class="cb"><div class="cl"><span>VOLATILE TEXT</span><span class="cv" id="cv-vol" style="color:var(--mag)">—</span></div><canvas class="ch" id="ch-vol" height="44"></canvas></div>
+      <div class="cb"><div class="cl"><span>MEMORY</span><span class="cv" id="cv-mem" style="color:var(--green)">—</span></div><canvas class="ch" id="ch-mem" height="44"></canvas></div>
+      <div class="cb"><div class="cl"><span>ENTROPY</span><span class="cv" id="cv-ent" style="color:var(--red)">—</span></div><canvas class="ch" id="ch-ent" height="44"></canvas></div>
+      <div class="cb"><div class="cl"><span>KNOWLEDGE VIABILITY Ω</span><span class="cv" id="cv-via" style="color:var(--cyan)">—</span></div><canvas class="ch" id="ch-via" height="44"></canvas></div>
+    </div>
+
+    <div id="stats">
+      <div class="sr"><span class="sk">PERM TEXT</span><span class="sv" id="sv-perm" style="color:var(--white)">—</span></div>
+      <div class="sr"><span class="sk">GRAPHITE</span><span class="sv" id="sv-graph" style="color:var(--amber)">—</span></div>
+      <div class="sr"><span class="sk">VOLATILE</span><span class="sv" id="sv-vol" style="color:var(--mag)">—</span></div>
+      <div class="sr"><span class="sk">MEMORY</span><span class="sv" id="sv-mem" style="color:var(--green)">—</span></div>
+      <div class="sr"><span class="sk">ENTROPY</span><span class="sv" id="sv-ent" style="color:var(--red)">—</span></div>
+      <div class="sr"><span class="sk">VIABILITY Ω</span><span class="sv" id="sv-via" style="color:var(--cyan)">—</span></div>
+    </div>
+
+    <div id="params">
+      <h3>// PARAMETERS</h3>
+      <div class="pr"><div class="pl"><span>Permanent ink cost</span><span class="pv" id="pv-pcost">2.0</span></div><input type="range" id="sl-pcost" min="0.5" max="5" step="0.1" value="2.0"></div>
+      <div class="pr"><div class="pl"><span>Graphite edit efficiency</span><span class="pv" id="pv-gedit">0.8</span></div><input type="range" id="sl-gedit" min="0.1" max="2" step="0.05" value="0.8"></div>
+      <div class="pr"><div class="pl"><span>Volatile decay rate</span><span class="pv" id="pv-vdecay">0.06</span></div><input type="range" id="sl-vdecay" min="0.005" max="0.25" step="0.005" value="0.06"></div>
+      <div class="pr"><div class="pl"><span>Canon threshold</span><span class="pv" id="pv-cthresh">1.5</span></div><input type="range" id="sl-cthresh" min="0.2" max="6" step="0.1" value="1.5"></div>
+      <div class="pr"><div class="pl"><span>Copy error rate</span><span class="pv" id="pv-cerr">0.04</span></div><input type="range" id="sl-cerr" min="0" max="0.25" step="0.005" value="0.04"></div>
+      <div class="pr"><div class="pl"><span>Compression loss</span><span class="pv" id="pv-closs">0.12</span></div><input type="range" id="sl-closs" min="0" max="0.5" step="0.01" value="0.12"></div>
+      <div class="pr"><div class="pl"><span>Memory decay</span><span class="pv" id="pv-mdecay">0.010</span></div><input type="range" id="sl-mdecay" min="0" max="0.05" step="0.001" value="0.01"></div>
+      <div class="pr"><div class="pl"><span>Entropy diffusion</span><span class="pv" id="pv-ediff">0.10</span></div><input type="range" id="sl-ediff" min="0.02" max="0.25" step="0.01" value="0.10"></div>
+    </div>
+
+    <div id="logw"><div id="log"></div></div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// INK ECOLOGY — Textual Knowledge Field Simulator
+//
+// MODEL INTERPRETATION
+//
+// Three inscription media with different entropy/fidelity tradeoffs:
+//
+//   permanent_text  — archival, expensive, locks in errors
+//   graphite_text   — revisable, medium decay, only medium that
+//                     can actively reduce local entropy (editing)
+//   volatile_text   — speculative, cheap, self-erasing without reinforcement
+//
+// Carriers:
+//   book    — printed, reproducible, standard format
+//   scroll  — compressed, portable, lossy
+//   memory  — internalized, slowest decay, no material substrate
+//
+// The key dynamics:
+//   volatile → graphite → permanent  (epistemic lifecycle)
+//   entropy = semantic degradation, not just heat
+//   only graphite can be edited (entropy reduction)
+//   permanent text locks in errors if written under high entropy
+//
+// Viability Ω = weighted sum favoring permanent+memory over volatile+entropy
+//
+// Regimes:
+//   DOGMA:        premature canonicalization → false certainty
+//   SPECULATION:  volatile flooding → wide spread, no memory
+//   REVISION:     healthy graphite cycling → slow but stable
+//   BALANCED:     all three loops compete under shared constraints
+// ================================================================
+
+const FNAMES = [
+  'permanent_ink','graphite_ink','volatile_ink',
+  'permanent_text','graphite_text','volatile_text',
+  'book','scroll','memory','labor','structure','entropy'
+];
+
+const FCOLORS = {
+  permanent_ink:  [[20,20,24], [230,230,215]],
+  graphite_ink:   [[24,18,6],  [255,188,35]],
+  volatile_ink:   [[22,8,22],  [255,70,200]],
+  permanent_text: [[18,18,22], [220,220,205]],
+  graphite_text:  [[20,16,6],  [255,178,40]],
+  volatile_text:  [[22,8,22],  [255,55,185]],
+  book:           [[5,20,20],  [40,245,218]],
+  scroll:         [[12,10,28], [175,145,255]],
+  memory:         [[8,22,8],   [108,255,68]],
+  labor:          [[8,18,8],   [115,255,85]],
+  structure:      [[8,12,22],  [90,170,255]],
+  entropy:        [[10,4,4],   [255,35,22]],
+  grad:           [[4,4,14],   [255,198,18]],
+  certainty:      [[8,8,12],   [255,255,255]],
+};
+
+const FLBL = {
+  permanent_ink:'PERM INK', graphite_ink:'GRAPHITE INK', volatile_ink:'VOLATILE INK',
+  permanent_text:'PERM TEXT', graphite_text:'GRAPHITE', volatile_text:'VOLATILE',
+  book:'BOOK', scroll:'SCROLL', memory:'MEMORY',
+  labor:'LABOR', structure:'LIBRARY', entropy:'ENTROPY',
+  grad:'∇ENTROPY', certainty:'CERTAINTY',
+};
+
+const FCSS = {
+  permanent_ink:'var(--white)', graphite_ink:'var(--amber)', volatile_ink:'var(--mag)',
+  permanent_text:'var(--white)', graphite_text:'var(--amber)', volatile_text:'var(--mag)',
+  book:'var(--cyan)', scroll:'var(--vio)', memory:'var(--green)',
+  labor:'var(--green)', structure:'var(--blue)', entropy:'var(--red)',
+  grad:'var(--amber)', certainty:'var(--white)',
+};
+
+let W=16, H=16, world=null, hist={}, step=0, running=false, iid=null;
+let fm={}, lastLog=-15;
+const HMAX=280;
+
+// ── Parameters ─────────────────────────────────────────────────
+function P(){
+  return {
+    pcost:  +document.getElementById('sl-pcost').value,
+    gedit:  +document.getElementById('sl-gedit').value,
+    vdecay: +document.getElementById('sl-vdecay').value,
+    cthresh:+document.getElementById('sl-cthresh').value,
+    cerr:   +document.getElementById('sl-cerr').value,
+    closs:  +document.getElementById('sl-closs').value,
+    mdecay: +document.getElementById('sl-mdecay').value,
+    ediff:  +document.getElementById('sl-ediff').value,
+  };
+}
+
+// ── Presets ────────────────────────────────────────────────────
+const PRESETS = {
+  balanced:   {pcost:2.0, gedit:0.80, vdecay:0.06, cthresh:1.5, cerr:0.04, closs:0.12, mdecay:0.010, ediff:0.10},
+  dogma:      {pcost:1.1, gedit:0.30, vdecay:0.09, cthresh:0.5, cerr:0.09, closs:0.10, mdecay:0.015, ediff:0.08},
+  speculation:{pcost:3.8, gedit:0.70, vdecay:0.18, cthresh:2.8, cerr:0.08, closs:0.24, mdecay:0.022, ediff:0.13},
+  revision:   {pcost:2.6, gedit:1.60, vdecay:0.04, cthresh:2.0, cerr:0.02, closs:0.07, mdecay:0.007, ediff:0.10},
+};
+
+function applyPreset(name){
+  const pre=PRESETS[name];
+  if(!pre) return;
+  document.getElementById('sl-pcost').value=pre.pcost;
+  document.getElementById('sl-gedit').value=pre.gedit;
+  document.getElementById('sl-vdecay').value=pre.vdecay;
+  document.getElementById('sl-cthresh').value=pre.cthresh;
+  document.getElementById('sl-cerr').value=pre.cerr;
+  document.getElementById('sl-closs').value=pre.closs;
+  document.getElementById('sl-mdecay').value=pre.mdecay;
+  document.getElementById('sl-ediff').value=pre.ediff;
+  syncPVals();
+}
+
+function syncPVals(){
+  const ids={pcost:2,gedit:2,vdecay:3,cthresh:1,cerr:3,closs:2,mdecay:3,ediff:2};
+  for(const[k,dp]of Object.entries(ids)){
+    document.getElementById('pv-'+k).textContent=(+document.getElementById('sl-'+k).value).toFixed(dp);
+  }
+}
+
+// ── World init ─────────────────────────────────────────────────
+function makeWorld(w,h){
+  const f={};
+  for(const nm of FNAMES) f[nm]=new Float32Array(w*h);
+  const ix=(x,y)=>y*w+x;
+  // Ink supplies at different locations
+  for(let x=2;x<7;x++) for(let y=2;y<7;y++) f.permanent_ink[ix(x,y)]=4+Math.random()*2;
+  for(let x=9;x<14;x++) for(let y=2;y<7;y++) f.graphite_ink[ix(x,y)]=5+Math.random()*2;
+  for(let x=4;x<12;x++) for(let y=10;y<15;y++) f.volatile_ink[ix(x,y)]=6+Math.random()*3;
+  // Library/press cluster in center
+  for(let x=6;x<10;x++) for(let y=6;y<10;y++) f.structure[ix(x,y)]=3+Math.random()*1.5;
+  for(let x=6;x<11;x++) for(let y=7;y<11;y++) f.labor[ix(x,y)]=2+Math.random()*2;
+  for(let i=0;i<w*h;i++) f.entropy[i]=0.15+Math.random()*0.2;
+  // Seed initial graphite text near center
+  for(let x=7;x<9;x++) for(let y=7;y<9;y++){
+    f.graphite_text[ix(x,y)]=1.8;
+    f.book[ix(x,y)]=1.0;
+  }
+  return {f,w,h};
+}
+
+function cloneW(wr){
+  const f={};
+  for(const nm of FNAMES) f[nm]=new Float32Array(wr.f[nm]);
+  return {f,w:wr.w,h:wr.h};
+}
+
+// ── Efficiency ─────────────────────────────────────────────────
+// All productive operations degrade with local entropy.
+// High entropy = errors in copying, loss of meaning on reading.
+function eff(s){ return Math.max(0.05, Math.exp(-0.06*s)); }
+
+// ── Operators ─────────────────────────────────────────────────
+// All operators take (r=read buffer, w=write buffer, i=cell index, p=params).
+
+function opWritePermanent(r,w,i,p){
+  if(r.permanent_ink[i]>=p.pcost && r.labor[i]>=0.8){
+    const e=eff(r.entropy[i]);
+    w.permanent_ink[i]-=p.pcost;
+    w.labor[i]-=0.8;
+    w.permanent_text[i]+=0.8*e;
+    // Locking in errors: high entropy means what gets canonized is distorted
+    w.entropy[i]+=0.5/e;
+  }
+}
+
+function opWriteGraphite(r,w,i){
+  if(r.graphite_ink[i]>=0.8 && r.labor[i]>=0.5){
+    const e=eff(r.entropy[i]);
+    w.graphite_ink[i]-=0.8;
+    w.labor[i]-=0.5;
+    w.graphite_text[i]+=1.0*e;
+    w.entropy[i]+=0.25/e;
+  }
+}
+
+function opWriteVolatile(r,w,i){
+  // Cheap and fast but immediately begins decaying
+  if(r.volatile_ink[i]>=0.4 && r.labor[i]>=0.25){
+    const e=eff(r.entropy[i]);
+    w.volatile_ink[i]-=0.4;
+    w.labor[i]-=0.25;
+    w.volatile_text[i]+=1.2*e;
+    w.entropy[i]+=0.18/e;
+  }
+}
+
+function opPrintBook(r,w,i,p){
+  // Printing requires text source + physical structure (library/press)
+  const src=r.permanent_text[i]+0.8*r.graphite_text[i];
+  if(src>=1.0 && r.structure[i]>=1.0 && r.labor[i]>=0.7){
+    const e=eff(r.entropy[i]);
+    w.labor[i]-=0.7;
+    w.book[i]+=src*0.65*e;
+    // Copy introduces errors proportional to copy_error param
+    w.entropy[i]+=(0.20+p.cerr)/e;
+  }
+}
+
+function opMakeScroll(r,w,i,p){
+  // Compress book or graphite text → scroll (lossy)
+  const src=r.book[i]+0.8*r.graphite_text[i];
+  if(src>=0.8 && r.labor[i]>=0.3){
+    const e=eff(r.entropy[i]);
+    w.labor[i]-=0.3;
+    w.scroll[i]+=0.9*(1-p.closs)*e;
+    // Compression is inherently lossy — entropy rises even in the best case
+    w.entropy[i]+=(0.15+p.closs)/e;
+  }
+}
+
+function opReadToMemory(r,w,i){
+  // Reading converts external text → internal memory
+  // Permanent and graphite text read better than volatile or scroll
+  const readable=r.permanent_text[i]+0.85*r.graphite_text[i]+0.65*r.book[i]+0.55*r.scroll[i]+0.35*r.volatile_text[i];
+  if(readable>=0.8 && r.labor[i]>=0.2){
+    const e=eff(r.entropy[i]);
+    w.labor[i]-=0.2;
+    w.memory[i]+=0.55*e;
+    w.entropy[i]+=0.07/e;
+  }
+}
+
+function opReviseGraphite(r,w,i,p){
+  // Editing is the ONLY way to actively reduce local entropy.
+  // It costs labor and requires existing graphite text to work on.
+  // This models: only provisional knowledge can be corrected.
+  if(r.graphite_text[i]>=0.8 && r.labor[i]>=0.4){
+    const gain=0.12*p.gedit;
+    w.labor[i]-=0.4;
+    w.graphite_text[i]+=gain;
+    // Entropy reduction: editing improves local semantic clarity
+    w.entropy[i]=Math.max(0, w.entropy[i]-0.14*p.gedit);
+  }
+}
+
+function opCanonicalize(r,w,i,p){
+  // Promotes graphite text to permanent — only when entropy is low enough.
+  // If entropy is high, canonicalization still succeeds but the result is
+  // permanently corrupt (entropy cost is paid into the permanent layer).
+  if(r.graphite_text[i]>=p.cthresh && r.permanent_ink[i]>=p.pcost*0.8 && r.labor[i]>=0.6){
+    w.graphite_text[i]-=p.cthresh*0.5;
+    w.permanent_ink[i]-=p.pcost*0.8;
+    w.labor[i]-=0.6;
+    const e=eff(r.entropy[i]);
+    w.permanent_text[i]+=0.9*e;
+    // Premature canonicalization under entropy: the error is now permanent
+    w.entropy[i]+=0.3/e;
+  }
+}
+
+// ── Diffusion ─────────────────────────────────────────────────
+function diffuse(src,w,h,stay,share){
+  const dst=new Float32Array(w*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=y*w+x;
+    let v=src[i]*stay;
+    v+=src[((y+h-1)%h)*w+x]*share;
+    v+=src[((y+1)%h)*w+x]*share;
+    v+=src[y*w+((x+w-1)%w)]*share;
+    v+=src[y*w+((x+1)%w)]*share;
+    dst[i]=Math.max(0,v);
+  }
+  return dst;
+}
+
+function diffEntropy(f,w,h,d){
+  // d = diffusion rate; conservation: stay = 1-4d, each neighbor gets d
+  const stay=Math.max(0.2, 1-4*d);
+  const share=d;
+  f.entropy=diffuse(f.entropy,w,h,stay,share);
+}
+
+// ── Step ───────────────────────────────────────────────────────
+function stepWorld(wr){
+  const p=P();
+  const{f:fin,w,h}=wr;
+
+  // True next-state buffer: read from f, write to nxt
+  const f={}, nxt={};
+  for(const nm of FNAMES){ f[nm]=fin[nm]; nxt[nm]=new Float32Array(fin[nm]); }
+
+  const n=w*h;
+  const regime=document.getElementById('regime').value;
+
+  for(let i=0;i<n;i++){
+    let acts=0;
+    const can=()=>acts<2&&++acts;
+
+    // ── PASSIVE PHYSICS ───────────────────────────────────────
+    // Ink supply replenishes slowly (ambient production)
+    if(f.permanent_ink[i]<6) nxt.permanent_ink[i]+=0.015;
+    if(f.graphite_ink[i]<8) nxt.graphite_ink[i]+=0.030;
+    if(f.volatile_ink[i]<10) nxt.volatile_ink[i]+=0.045;
+
+    // Library/press decay
+    if(f.structure[i]>0){
+      nxt.structure[i]-=f.entropy[i]>5?0.015*f.entropy[i]:0.002*f.entropy[i];
+      if(nxt.structure[i]<0) nxt.structure[i]=0;
+    }
+
+    // Labor degraded by entropy
+    if(f.labor[i]>0){
+      nxt.labor[i]-=0.0035*f.entropy[i];
+      if(nxt.labor[i]<0) nxt.labor[i]=0;
+    }
+
+    // Medium-specific text decay:
+    // volatile fastest, graphite medium, permanent slowest
+    // entropy accelerates all three
+    nxt.volatile_text[i]*=(1-p.vdecay);
+    nxt.graphite_text[i]*=(1-0.010-0.0018*f.entropy[i]);
+    nxt.permanent_text[i]*=(1-0.0015-0.0004*f.entropy[i]);
+    nxt.book[i]*=(1-0.003-0.0012*f.entropy[i]);
+    nxt.scroll[i]*=(1-0.015-0.002*f.entropy[i]);
+    nxt.memory[i]*=(1-p.mdecay-0.0006*f.entropy[i]);
+
+    // Ambient entropy from physical media
+    nxt.entropy[i]+=0.008*(f.book[i]+f.scroll[i]+0.4*f.volatile_text[i]);
+
+    // Memory regenerates labor (internalized knowledge sustains capacity)
+    if(f.memory[i]>0.8) nxt.labor[i]+=0.06*eff(f.entropy[i]);
+
+    // ── PRIORITY: READ TO MEMORY ──────────────────────────────
+    // Knowledge internalization is the baseline survival behavior
+    if(can() && (f.book[i]+f.scroll[i]+f.permanent_text[i]+f.graphite_text[i])>0.8
+             && Math.random()<0.55) opReadToMemory(f,nxt,i);
+
+    // ── REGIME-SPECIFIC ACTIVE OPERATIONS ─────────────────────
+    if(regime==='balanced'){
+      if(can()&&f.graphite_ink[i]>0.7&&Math.random()<0.40) opWriteGraphite(f,nxt,i);
+      if(can()&&f.volatile_ink[i]>0.5&&Math.random()<0.28) opWriteVolatile(f,nxt,i);
+      if(can()&&f.graphite_text[i]>0.8&&Math.random()<0.32) opReviseGraphite(f,nxt,i,p);
+      if(can()&&f.graphite_text[i]>=p.cthresh&&Math.random()<0.22) opCanonicalize(f,nxt,i,p);
+      if(can()&&(f.permanent_text[i]+f.graphite_text[i])>1&&f.structure[i]>1&&Math.random()<0.35) opPrintBook(f,nxt,i,p);
+      if(can()&&(f.book[i]+f.graphite_text[i])>0.8&&Math.random()<0.24) opMakeScroll(f,nxt,i,p);
+      if(can()&&f.permanent_ink[i]>p.pcost&&Math.random()<0.10) opWritePermanent(f,nxt,i,p);
+    }
+
+    else if(regime==='dogma'){
+      // Rushes to permanence — high canonicalization, low revision
+      if(can()&&f.graphite_text[i]>=p.cthresh*0.6&&Math.random()<0.60) opCanonicalize(f,nxt,i,p);
+      if(can()&&f.permanent_ink[i]>p.pcost&&Math.random()<0.28) opWritePermanent(f,nxt,i,p);
+      if(can()&&(f.permanent_text[i]+f.graphite_text[i])>1&&f.structure[i]>0.8&&Math.random()<0.42) opPrintBook(f,nxt,i,p);
+      if(can()&&f.graphite_text[i]>0.7&&Math.random()<0.08) opReviseGraphite(f,nxt,i,p);
+      if(can()&&f.graphite_ink[i]>0.7&&Math.random()<0.20) opWriteGraphite(f,nxt,i);
+    }
+
+    else if(regime==='speculation'){
+      // Floods volatile space, rarely stabilizes
+      if(can()&&f.volatile_ink[i]>0.4&&Math.random()<0.75) opWriteVolatile(f,nxt,i);
+      if(can()&&(f.book[i]+f.graphite_text[i])>0.5&&Math.random()<0.48) opMakeScroll(f,nxt,i,p);
+      if(can()&&f.graphite_ink[i]>0.6&&Math.random()<0.16) opWriteGraphite(f,nxt,i);
+      if(can()&&f.graphite_text[i]>=p.cthresh&&Math.random()<0.06) opCanonicalize(f,nxt,i,p);
+    }
+
+    else if(regime==='revision'){
+      // Careful: write graphite, revise repeatedly, canonicalize slowly
+      if(can()&&f.graphite_ink[i]>0.6&&Math.random()<0.55) opWriteGraphite(f,nxt,i);
+      if(can()&&f.graphite_text[i]>0.7&&Math.random()<0.58) opReviseGraphite(f,nxt,i,p);
+      if(can()&&f.graphite_text[i]>=p.cthresh&&f.entropy[i]<3&&Math.random()<0.20) opCanonicalize(f,nxt,i,p);
+      if(can()&&(f.permanent_text[i]+f.graphite_text[i])>1&&f.structure[i]>1&&Math.random()<0.28) opPrintBook(f,nxt,i,p);
+      if(can()&&f.volatile_ink[i]>0.4&&Math.random()<0.12) opWriteVolatile(f,nxt,i);
+    }
+  }
+
+  // Spatial diffusion of transmitted media
+  // Scrolls and volatile text spread across space (transport)
+  // Memory spreads slowly (social learning)
+  nxt.scroll=diffuse(nxt.scroll,w,h,0.84,0.04);
+  nxt.volatile_text=diffuse(nxt.volatile_text,w,h,0.80,0.05);
+  nxt.memory=diffuse(nxt.memory,w,h,0.88,0.03);
+
+  diffEntropy(nxt,w,h,p.ediff);
+
+  return{f:nxt,w,h};
+}
+
+// ── Derived fields ─────────────────────────────────────────────
+function computeGrad(f,w,h){
+  const S=f.entropy,g=new Float32Array(w*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=y*w+x;
+    const avg=(S[((y+h-1)%h)*w+x]+S[((y+1)%h)*w+x]+S[y*w+((x+w-1)%w)]+S[y*w+((x+1)%w)])/4;
+    g[i]=Math.abs(S[i]-avg);
+  }
+  return g;
+}
+
+function computeCertainty(f,w,h){
+  const c=new Float32Array(w*h);
+  for(let i=0;i<w*h;i++){
+    c[i]=Math.max(0, 1.5*f.permanent_text[i]+0.9*f.graphite_text[i]-0.8*f.volatile_text[i]-0.35*f.entropy[i]);
+  }
+  return c;
+}
+
+function fsum(a){let s=0;for(let i=0;i<a.length;i++)s+=a[i];return s;}
+
+// Viability: permanent and memory are most valuable,
+// volatile and entropy are liabilities
+function via(f){
+  return 1.4*fsum(f.permanent_text)
+       +1.0*fsum(f.graphite_text)
+       +0.5*fsum(f.book)
+       +0.3*fsum(f.scroll)
+       +0.9*fsum(f.memory)
+       +0.5*fsum(f.structure)
+       +0.6*fsum(f.labor)
+       -0.9*fsum(f.entropy)
+       -0.25*fsum(f.volatile_text);
+}
+
+// ── History ────────────────────────────────────────────────────
+function initHist(){
+  hist={perm:[],graph:[],vol:[],mem:[],ent:[],via:[]};
+}
+function recHist(){
+  const f=world.f;
+  hist.perm.push(fsum(f.permanent_text));
+  hist.graph.push(fsum(f.graphite_text));
+  hist.vol.push(fsum(f.volatile_text));
+  hist.mem.push(fsum(f.memory));
+  hist.ent.push(fsum(f.entropy));
+  hist.via.push(via(f));
+  for(const k of Object.keys(hist)) if(hist[k].length>HMAX) hist[k].shift();
+}
+
+// ── Rendering ──────────────────────────────────────────────────
+function renderField(canvas,data,key){
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d'),img=ctx.createImageData(W,H);
+  let mx=0;for(let i=0;i<data.length;i++) if(data[i]>mx) mx=data[i];
+  fm[key]=Math.max(fm[key]||1,mx,0.5);mx=fm[key];
+  const cd=FCOLORS[key]||FCOLORS.entropy;
+  for(let i=0;i<W*H;i++){
+    const t=Math.min(1,data[i]/mx);
+    img.data[i*4]  =cd[0][0]+t*(cd[1][0]-cd[0][0]);
+    img.data[i*4+1]=cd[0][1]+t*(cd[1][1]-cd[0][1]);
+    img.data[i*4+2]=cd[0][2]+t*(cd[1][2]-cd[0][2]);
+    img.data[i*4+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+
+function renderChart(canvas,data,color,lbl){
+  const CW=canvas.parentElement.clientWidth||250,CH=44;
+  canvas.width=CW;canvas.height=CH;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#08080a';ctx.fillRect(0,0,CW,CH);
+  if(data.length<2){if(lbl)lbl.textContent='—';return;}
+  let mn=Infinity,mx=-Infinity;
+  for(const v of data){if(v<mn)mn=v;if(v>mx)mx=v;}
+  if(mx-mn<0.01){mn-=1;mx+=1;}
+  if(mn<0){
+    const zy=CH-((0-mn)/(mx-mn))*CH;
+    ctx.strokeStyle='#252530';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,zy);ctx.lineTo(CW,zy);ctx.stroke();
+  }
+  ctx.beginPath();
+  for(let i=0;i<data.length;i++){
+    const px=(i/(data.length-1))*CW,py=CH-((data[i]-mn)/(mx-mn))*(CH-4)-2;
+    i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  }
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+  if(lbl) lbl.textContent=data[data.length-1].toFixed(1);
+}
+
+// ── DOM ─────────────────────────────────────────────────────────
+function viewList(){
+  const v=document.getElementById('vsel').value;
+  if(v==='all') return ['permanent_text','graphite_text','volatile_text','book','scroll','memory','labor','structure','entropy','certainty','permanent_ink','graphite_ink'];
+  return [v];
+}
+
+function buildGrid(){
+  const g=document.getElementById('fg');g.innerHTML='';
+  const fl=viewList();
+  g.style.gridTemplateColumns=fl.length>1?'repeat(4,1fr)':'1fr';
+  for(const nm of fl){
+    const fp=document.createElement('div');fp.className='fp';
+    fp.innerHTML=`<div class="fl"><span style="color:${FCSS[nm]}">${FLBL[nm]||nm}</span><span class="ft" id="ft${nm}" style="color:${FCSS[nm]}">—</span></div><div class="cw"><canvas class="fc" id="fc${nm}" width="${W}" height="${H}"></canvas></div>`;
+    g.appendChild(fp);
+  }
+}
+
+function renderGrids(){
+  for(const nm of viewList()){
+    const fc=document.getElementById('fc'+nm);
+    if(!fc) continue;
+    const data=nm==='grad'?computeGrad(world.f,W,H):nm==='certainty'?computeCertainty(world.f,W,H):world.f[nm];
+    renderField(fc,data,nm);
+    const ft=document.getElementById('ft'+nm);
+    if(ft){let s=0;for(let i=0;i<data.length;i++)s+=data[i];ft.textContent=s.toFixed(0);}
+  }
+}
+
+function renderCharts(){
+  renderChart(document.getElementById('ch-perm'), hist.perm, '#ddddc8', document.getElementById('cv-perm'));
+  renderChart(document.getElementById('ch-graph'),hist.graph,'#ffbc30', document.getElementById('cv-graph'));
+  renderChart(document.getElementById('ch-vol'),  hist.vol,  '#ff44cc', document.getElementById('cv-vol'));
+  renderChart(document.getElementById('ch-mem'),  hist.mem,  '#6fff50', document.getElementById('cv-mem'));
+  renderChart(document.getElementById('ch-ent'),  hist.ent,  '#ff3a2a', document.getElementById('cv-ent'));
+  renderChart(document.getElementById('ch-via'),  hist.via,  '#40ffee', document.getElementById('cv-via'));
+}
+
+function renderStats(){
+  const f=world.f;
+  document.getElementById('sv-perm').textContent=fsum(f.permanent_text).toFixed(1);
+  document.getElementById('sv-graph').textContent=fsum(f.graphite_text).toFixed(1);
+  document.getElementById('sv-vol').textContent=fsum(f.volatile_text).toFixed(1);
+  document.getElementById('sv-mem').textContent=fsum(f.memory).toFixed(1);
+  document.getElementById('sv-ent').textContent=fsum(f.entropy).toFixed(1);
+  const v=via(f);
+  const el=document.getElementById('sv-via');
+  el.textContent=v.toFixed(1);
+  el.style.color=v>0?'var(--cyan)':'var(--red)';
+}
+
+// ── Log ─────────────────────────────────────────────────────────
+function checkLog(){
+  if(step-lastLog<15) return; lastLog=step;
+  const f=world.f;
+  const pt=fsum(f.permanent_text),gt=fsum(f.graphite_text),vt=fsum(f.volatile_text),mem=fsum(f.memory);
+  if(vt>pt*4&&vt>30) addLog('SPECULATIVE FLOOD — volatile >> permanent','lw');
+  if(mem<5&&step>40) addLog('MEMORY COLLAPSE','lc');
+  if(pt>50&&gt<8) addLog('DOGMA LOCK-IN — canon >> graphite','lw');
+  if(fsum(f.entropy)>300) addLog('ENTROPY SATURATION','lc');
+  if(gt>pt*3&&step>60) addLog('REVISION DOMINATES — healthy?','lg');
+  addLog(`T=${step}  Ω=${via(f).toFixed(0)}  P=${pt.toFixed(0)}  G=${gt.toFixed(0)}  V=${vt.toFixed(0)}`,'');
+}
+function addLog(msg,cls){
+  const el=document.getElementById('log');
+  const d=document.createElement('div');
+  if(cls)d.className=cls;d.textContent='> '+msg;
+  el.insertBefore(d,el.firstChild);
+  while(el.children.length>26)el.removeChild(el.lastChild);
+}
+
+// ── Tick ──────────────────────────────────────────────────────
+function tick(){
+  world=stepWorld(world);step++;recHist();
+  document.getElementById('sn').textContent=String(step).padStart(4,'0');
+  renderGrids();renderCharts();renderStats();checkLog();
+}
+
+// ── Init ──────────────────────────────────────────────────────
+function init(){
+  W=parseInt(document.getElementById('sz').value);H=W;
+  fm={};world=makeWorld(W,H);step=0;lastLog=-15;
+  initHist();buildGrid();recHist();
+  renderGrids();renderCharts();renderStats();
+  addLog(`INIT ${W}×${H} · ${document.getElementById('regime').selectedOptions[0].text}`,'lg');
+  setTimeout(()=>{renderGrids();renderCharts();},50);
+}
+
+// ── Controls ──────────────────────────────────────────────────
+const pb=document.getElementById('bplay');
+pb.addEventListener('click',()=>{
+  running=!running;
+  if(running){pb.textContent='⏸ PAUSE';pb.classList.add('active');iid=setInterval(tick,parseInt(document.getElementById('spd').value));}
+  else{pb.textContent='▶ RUN';pb.classList.remove('active');clearInterval(iid);}
+});
+document.getElementById('bstep').addEventListener('click',()=>{if(!running)tick();});
+document.getElementById('breset').addEventListener('click',()=>{
+  running=false;clearInterval(iid);pb.textContent='▶ RUN';pb.classList.remove('active');init();
+});
+document.getElementById('spd').addEventListener('change',()=>{
+  if(running){clearInterval(iid);iid=setInterval(tick,parseInt(document.getElementById('spd').value));}
+});
+document.getElementById('sz').addEventListener('change',()=>{
+  running=false;clearInterval(iid);pb.textContent='▶ RUN';pb.classList.remove('active');init();
+});
+document.getElementById('vsel').addEventListener('change',()=>{buildGrid();renderGrids();});
+document.getElementById('regime').addEventListener('change',function(){
+  applyPreset(this.value);
+  addLog('REGIME → '+this.selectedOptions[0].text,'lg');
+  init();
+});
+for(const id of['pcost','gedit','vdecay','cthresh','cerr','closs','mdecay','ediff']){
+  document.getElementById('sl-'+id).addEventListener('input',syncPVals);
+}
+
+applyPreset('balanced');syncPVals();init();
+</script>
+</body>
+</html>
