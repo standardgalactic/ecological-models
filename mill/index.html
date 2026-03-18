@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mill Ecology</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+:root{
+  --bg:#07080a;--bg2:#0c0d10;--bg3:#111318;--panel:#0e0f14;
+  --border:#22242e;--brite:#32344a;
+  --green:#60ff44;--gdim:#286618;--gdark:#101e08;
+  --amber:#ffb820;--adim:#664808;
+  --red:#ff2e1a;--rdim:#661208;
+  --blue:#38a8ff;--cyan:#30ffee;--cdim:#105050;
+  --mag:#ff38cc;--mdim:#801840;
+  --gold:#ffd040;--gdold:#665010;
+  --white:#d8d8c4;--dim:#3e3e34;
+  --teal:#28ddaa;--tdim:#0e5038;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--white);font-family:'Share Tech Mono',monospace;font-size:12px;min-height:100vh;overflow:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0,rgba(0,0,0,.10) 1px,transparent 1px,transparent 3px);pointer-events:none;z-index:1000;}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.7) 100%);pointer-events:none;z-index:999;}
+#hdr{display:flex;align-items:center;gap:14px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg2);}
+#hdr h1{font-family:'VT323',monospace;font-size:25px;color:var(--teal);text-shadow:0 0 12px #28ddaa55;letter-spacing:3px;}
+.sub{color:var(--dim);font-size:10px;letter-spacing:2px;text-transform:uppercase;}
+#stepd{margin-left:auto;font-family:'VT323',monospace;font-size:20px;color:var(--amber);text-shadow:0 0 8px #ffb82055;}
+#ctrl{display:flex;align-items:center;gap:7px;padding:6px 16px;border-bottom:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;}
+button{background:var(--bg3);border:1px solid var(--brite);color:var(--teal);font-family:'Share Tech Mono',monospace;font-size:11px;padding:4px 11px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .1s;}
+button:hover{background:var(--gdark);border-color:var(--teal);box-shadow:0 0 6px #28ddaa33;}
+button.active{background:var(--gdark);border-color:var(--teal);}
+button.danger{color:var(--red);border-color:var(--rdim);}
+button.danger:hover{background:#1a0808;border-color:var(--red);}
+button.gold{color:var(--gold);border-color:var(--gdold);}
+button.gold:hover{background:#1a1208;border-color:var(--gold);}
+.cgrp{display:flex;align-items:center;gap:5px;border-left:1px solid var(--border);padding-left:8px;}
+.clbl{color:var(--dim);font-size:10px;letter-spacing:1px;}
+select{background:var(--bg3);border:1px solid var(--brite);color:var(--amber);font-family:'Share Tech Mono',monospace;font-size:11px;padding:3px 6px;cursor:pointer;}
+#main{display:grid;grid-template-columns:200px 1fr 220px;height:calc(100vh - 84px);overflow:hidden;}
+#params{border-right:1px solid var(--border);overflow-y:auto;background:var(--bg2);}
+.psec{border-bottom:1px solid var(--border);}
+.psec-hdr{padding:6px 10px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);cursor:pointer;display:flex;justify-content:space-between;align-items:center;}
+.psec-hdr:hover{color:var(--white);}
+.arr{font-size:12px;transition:transform .15s;display:inline-block;}
+.psec-hdr.open .arr{transform:rotate(90deg);}
+.psec-body{padding:6px 10px 8px;display:none;}
+.psec-body.open{display:block;}
+.pr{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.pr label{font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;flex:1;}
+.pr input[type=range]{width:70px;accent-color:var(--teal);flex-shrink:0;}
+.pv{font-family:'VT323',monospace;font-size:13px;color:var(--teal);width:32px;text-align:right;flex-shrink:0;}
+.pbtn{display:block;width:100%;text-align:left;padding:5px 10px;margin-bottom:2px;font-size:10px;letter-spacing:1px;background:var(--bg3);border:1px solid var(--border);color:var(--dim);cursor:pointer;font-family:'Share Tech Mono',monospace;}
+.pbtn:hover{border-color:var(--teal);color:var(--teal);}
+#rbtn{display:block;width:calc(100% - 20px);margin:8px 10px;padding:5px;background:var(--bg3);border:1px solid var(--gdold);color:var(--gold);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;cursor:pointer;text-align:center;}
+#rbtn:hover{background:#1a1208;border-color:var(--gold);}
+#fields{display:flex;flex-direction:column;overflow:hidden;}
+#fhdr{padding:6px 12px;border-bottom:1px solid var(--border);font-family:'VT323',monospace;font-size:14px;letter-spacing:3px;color:var(--dim);flex-shrink:0;}
+#fgrid{display:grid;gap:7px;padding:8px;overflow-y:auto;flex:1;}
+.fp{background:var(--panel);border:1px solid var(--border);}
+.fp .fl{padding:3px 6px;font-size:9px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.fp .ft{font-family:'VT323',monospace;font-size:13px;}
+.fp .cw{position:relative;}
+.fp canvas.fc{display:block;width:100%;image-rendering:pixelated;}
+.fp canvas.ro{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+#sb{border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+#chw{flex:1;overflow-y:auto;padding:9px;}
+#chw h2{font-family:'VT323',monospace;font-size:14px;color:var(--dim);letter-spacing:3px;margin-bottom:7px;}
+.cb{margin-bottom:9px;}
+.cl{font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;display:flex;justify-content:space-between;}
+.cv{font-family:'VT323',monospace;font-size:13px;color:var(--teal);}
+canvas.ch{display:block;width:100%;border:1px solid var(--border);background:var(--bg);}
+#phase{padding:9px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+#phase h3{font-family:'VT323',monospace;font-size:14px;color:var(--dim);letter-spacing:3px;margin-bottom:6px;}
+.phr{display:flex;justify-content:space-between;margin-bottom:4px;align-items:center;}
+.phk{font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;}
+.phv{font-family:'VT323',monospace;font-size:15px;}
+#badge{padding:6px 10px;border:1px solid var(--border);font-size:10px;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:6px;transition:all .3s;}
+#logw{padding:0 9px 7px;max-height:80px;overflow-y:auto;border-top:1px solid var(--border);flex-shrink:0;}
+#log{font-size:9px;color:var(--gdim);line-height:1.7;}
+.lw{color:var(--adim)!important;}
+.lc{color:var(--rdim)!important;}
+.lg{color:var(--teal)!important;opacity:.6;}
+</style>
+</head>
+<body>
+<div id="hdr">
+  <h1>MILL ECOLOGY</h1>
+  <span class="sub">CLOSED-LOOP INDUSTRIAL FIELD SIM · RSVP</span>
+  <span id="stepd">T=<span id="sn">0000</span></span>
+</div>
+<div id="ctrl">
+  <button id="bplay">▶ RUN</button>
+  <button id="bstep">STEP</button>
+  <button id="breset" class="danger">RESET</button>
+  <div class="cgrp"><span class="clbl">SPEED</span>
+    <select id="spd"><option value="500">SLOW</option><option value="150" selected>MED</option><option value="40">FAST</option><option value="8">MAX</option></select>
+  </div>
+  <div class="cgrp"><span class="clbl">SIZE</span>
+    <select id="sz"><option value="16" selected>16×16</option><option value="24">24×24</option><option value="32">32×32</option></select>
+  </div>
+  <div class="cgrp"><button id="broads" class="active">HIDE ROADS</button></div>
+  <div class="cgrp"><span class="clbl">VIEW</span>
+    <select id="vsel">
+      <option value="all">ALL FIELDS</option>
+      <option value="entropy">ENTROPY S</option>
+      <option value="grad">∇S GRADIENT</option>
+      <option value="wood">WOOD</option>
+      <option value="pulp">PULP</option>
+      <option value="paper">PAPER</option>
+      <option value="scrap">SCRAP</option>
+      <option value="milk">MILK</option>
+      <option value="yogurt">YOGURT</option>
+      <option value="energy">ENERGY</option>
+      <option value="labor">LABOR</option>
+      <option value="structure">STRUCTURE</option>
+    </select>
+  </div>
+</div>
+<div id="main">
+  <div id="params">
+    <div style="padding:6px 10px 4px;font-size:9px;color:var(--dim);letter-spacing:2px;border-bottom:1px solid var(--border)">// PARAMETER SPACE</div>
+    <div class="psec" id="sec-pre">
+      <div class="psec-hdr open" onclick="toggleSec('pre')">PRESETS <span class="arr">▶</span></div>
+      <div class="psec-body open" id="body-pre">
+        <button class="pbtn" onclick="applyPreset('balanced')">◈ BALANCED ECOLOGY</button>
+        <button class="pbtn" onclick="applyPreset('overharvest')">◈ OVERHARVEST COLLAPSE</button>
+        <button class="pbtn" onclick="applyPreset('recycling')">◈ RECYCLING DOMINANT</button>
+        <button class="pbtn" onclick="applyPreset('bio')">◈ BIO STABILIZATION</button>
+        <button class="pbtn" onclick="applyPreset('entdeath')">◈ ENTROPY DEATH</button>
+        <button class="pbtn" onclick="applyPreset('hypergrowth')">◈ HYPERGROWTH BUBBLE</button>
+        <button id="rbtn" onclick="randomize()">⚡ RANDOMIZE SYSTEM</button>
+      </div>
+    </div>
+    <div class="psec" id="sec-ext"><div class="psec-hdr" onclick="toggleSec('ext')">EXTRACTION <span class="arr">▶</span></div><div class="psec-body" id="body-ext"></div></div>
+    <div class="psec" id="sec-ind"><div class="psec-hdr" onclick="toggleSec('ind')">INDUSTRY <span class="arr">▶</span></div><div class="psec-body" id="body-ind"></div></div>
+    <div class="psec" id="sec-rec"><div class="psec-hdr" onclick="toggleSec('rec')">RECYCLING <span class="arr">▶</span></div><div class="psec-body" id="body-rec"></div></div>
+    <div class="psec" id="sec-bio"><div class="psec-hdr" onclick="toggleSec('bio')">BIOLOGY <span class="arr">▶</span></div><div class="psec-body" id="body-bio"></div></div>
+    <div class="psec" id="sec-tr"><div class="psec-hdr" onclick="toggleSec('tr')">TRANSPORT <span class="arr">▶</span></div><div class="psec-body" id="body-tr"></div></div>
+    <div class="psec" id="sec-ent"><div class="psec-hdr" onclick="toggleSec('ent')">ENTROPY <span class="arr">▶</span></div><div class="psec-body" id="body-ent"></div></div>
+    <div class="psec" id="sec-ctl"><div class="psec-hdr" onclick="toggleSec('ctl')">AGENCY <span class="arr">▶</span></div><div class="psec-body" id="body-ctl"></div></div>
+  </div>
+  <div id="fields">
+    <div id="fhdr">// FIELD STATE</div>
+    <div id="fgrid"></div>
+  </div>
+  <div id="sb">
+    <div id="chw"><h2>// DYNAMICS</h2></div>
+    <div id="phase">
+      <h3>// PHASE DETECTION</h3>
+      <div id="badge" style="color:var(--teal);border-color:var(--tdim)">INITIALIZING</div>
+      <div class="phr"><span class="phk">VIABILITY ω</span><span class="phv" id="phvia" style="color:var(--teal)">—</span></div>
+      <div class="phr"><span class="phk">ENTROPY RATE</span><span class="phv" id="phds" style="color:var(--amber)">—</span></div>
+      <div class="phr"><span class="phk">MATERIAL</span><span class="phv" id="phmat" style="color:var(--green)">—</span></div>
+      <div class="phr"><span class="phk">BIO LOOP</span><span class="phv" id="phbio" style="color:var(--teal)">—</span></div>
+      <div class="phr"><span class="phk">PAPER OUT</span><span class="phv" id="phpap" style="color:var(--white)">—</span></div>
+    </div>
+    <div id="logw"><div id="log"></div></div>
+  </div>
+</div>
+<script>
+// ================================================================
+// MILL ECOLOGY — Parameterized Closed-Loop Industrial Field Sim
+//
+// Three coupled production loops sharing energy, labor, roads, entropy:
+//   PAPER LOOP:   wood → pulp → paper → scrap → (recycle) → pulp
+//   PLYWOOD LOOP: wood → structure (durable capital)
+//   DAIRY LOOP:   milk → yogurt → labor (biological stabilizer)
+//
+// All parameters in P{}. Presets are points in parameter space.
+// Phase detection classifies regime from emergent dynamics.
+// ================================================================
+
+// ── Parameter definitions ──────────────────────────────────────
+const PDEFS = {
+  ext: [
+    {k:'wood_regen', l:'Wood Regen',   mn:0.01,mx:0.15,st:0.005,d:0.04},
+    {k:'forest_cap', l:'Forest Cap',   mn:4,   mx:20,  st:0.5,  d:12},
+    {k:'log_eff',    l:'Log Eff',      mn:0.5, mx:2.0, st:0.05, d:1.0},
+    {k:'log_ent',    l:'Log Entropy',  mn:0.1, mx:1.0, st:0.05, d:0.3},
+    {k:'milk_regen', l:'Milk Regen',   mn:0.01,mx:0.12,st:0.005,d:0.05},
+    {k:'milk_cap',   l:'Milk Cap',     mn:4,   mx:16,  st:0.5,  d:8},
+  ],
+  ind: [
+    {k:'pulp_yield', l:'Pulp Yield',   mn:0.3, mx:1.2, st:0.05, d:0.7},
+    {k:'pulp_ent',   l:'Pulp Entropy', mn:0.3, mx:2.0, st:0.05, d:0.8},
+    {k:'paper_eff',  l:'Paper Eff',    mn:0.3, mx:1.2, st:0.05, d:0.8},
+    {k:'paper_ent',  l:'Paper Entropy',mn:0.2, mx:1.5, st:0.05, d:0.6},
+    {k:'ply_eff',    l:'Plywood Eff',  mn:0.3, mx:1.2, st:0.05, d:0.6},
+    {k:'ply_ent',    l:'Plywood Ent',  mn:0.5, mx:2.5, st:0.05, d:1.2},
+    {k:'s_dec_lo',   l:'Decay (lo S)', mn:0.001,mx:0.02,st:0.001,d:0.003},
+    {k:'s_dec_hi',   l:'Decay (hi S)', mn:0.01,mx:0.08,st:0.002,d:0.02},
+    {k:'s_thresh',   l:'Decay Thresh', mn:2,   mx:12,  st:0.5,  d:5},
+  ],
+  rec: [
+    {k:'rec_eff',    l:'Recycle Eff',  mn:0.2, mx:1.0, st:0.05, d:0.6},
+    {k:'rec_ent',    l:'Rec Entropy',  mn:0.1, mx:1.0, st:0.05, d:0.3},
+    {k:'rec_lab',    l:'Rec Labor',    mn:0.2, mx:1.2, st:0.05, d:0.6},
+    {k:'rec_nrg',    l:'Rec Energy',   mn:0.3, mx:1.5, st:0.05, d:0.8},
+  ],
+  bio: [
+    {k:'yog_eff',    l:'Yogurt Eff',   mn:0.3, mx:1.2, st:0.05, d:0.7},
+    {k:'yog_nrg',    l:'Yogurt Energy',mn:0.1, mx:1.0, st:0.05, d:0.4},
+    {k:'lab_gain',   l:'Labor/Food',   mn:0.5, mx:3.0, st:0.1,  d:1.6},
+    {k:'lab_dec',    l:'Labor Decay k',mn:0.001,mx:0.015,st:0.001,d:0.004},
+  ],
+  tr: [
+    {k:'xp_loss',    l:'Xport Loss',   mn:0.0, mx:0.3, st:0.01, d:0.08},
+    {k:'xp_nrg',     l:'Xport Energy', mn:0.05,mx:0.8, st:0.05, d:0.25},
+    {k:'xp_max',     l:'Max Traffic',  mn:1,   mx:8,   st:1,    d:3},
+  ],
+  ent: [
+    {k:'ent_diff',   l:'Diffusion',    mn:0.1, mx:0.8, st:0.05, d:0.4},
+    {k:'eff_slope',  l:'Eff Slope',    mn:0.01,mx:0.15,st:0.005,d:0.055},
+    {k:'eff_floor',  l:'Eff Floor',    mn:0.01,mx:0.2, st:0.01, d:0.05},
+    {k:'nrg_regen',  l:'Energy Regen', mn:0.01,mx:0.12,st:0.005,d:0.04},
+    {k:'nrg_cap',    l:'Energy Cap',   mn:4,   mx:16,  st:0.5,  d:8},
+  ],
+  ctl: [
+    {k:'max_act',    l:'Max Actions',  mn:1,   mx:4,   st:1,    d:2},
+    {k:'stoch',      l:'Stochasticity',mn:0.1, mx:1.0, st:0.05, d:0.5},
+    {k:'b_build',    l:'Build Bias',   mn:0.1, mx:0.9, st:0.05, d:0.4},
+    {k:'b_rec',      l:'Recycle Bias', mn:0.1, mx:0.9, st:0.05, d:0.4},
+    {k:'b_bio',      l:'Bio Bias',     mn:0.1, mx:0.9, st:0.05, d:0.5},
+  ],
+};
+
+let P = {};
+function resetP(){ for(const defs of Object.values(PDEFS)) for(const d of defs) P[d.k]=d.d; }
+resetP();
+
+// ── Presets ────────────────────────────────────────────────────
+const PRESETS = {
+  balanced:   {wood_regen:0.04,forest_cap:12,log_eff:1.0,log_ent:0.3,milk_regen:0.05,milk_cap:8,pulp_yield:0.7,pulp_ent:0.8,paper_eff:0.8,paper_ent:0.6,ply_eff:0.6,ply_ent:1.2,s_dec_lo:0.003,s_dec_hi:0.02,s_thresh:5,rec_eff:0.6,rec_ent:0.3,rec_lab:0.6,rec_nrg:0.8,yog_eff:0.7,yog_nrg:0.4,lab_gain:1.6,lab_dec:0.004,xp_loss:0.08,xp_nrg:0.25,xp_max:3,ent_diff:0.4,eff_slope:0.055,eff_floor:0.05,nrg_regen:0.04,nrg_cap:8,max_act:2,stoch:0.5,b_build:0.4,b_rec:0.4,b_bio:0.5},
+  overharvest:{wood_regen:0.01,forest_cap:8, log_eff:1.8,log_ent:0.6,milk_regen:0.03,milk_cap:6,pulp_yield:0.9,pulp_ent:1.2,paper_eff:1.0,paper_ent:0.8,ply_eff:0.8,ply_ent:1.5,s_dec_lo:0.003,s_dec_hi:0.025,s_thresh:4,rec_eff:0.3,rec_ent:0.5,rec_lab:0.8,rec_nrg:1.2,yog_eff:0.5,yog_nrg:0.6,lab_gain:1.2,lab_dec:0.006,xp_loss:0.12,xp_nrg:0.3,xp_max:2,ent_diff:0.5,eff_slope:0.07,eff_floor:0.05,nrg_regen:0.03,nrg_cap:6,max_act:2,stoch:0.6,b_build:0.7,b_rec:0.2,b_bio:0.3},
+  recycling:  {wood_regen:0.03,forest_cap:10,log_eff:0.7,log_ent:0.2,milk_regen:0.04,milk_cap:8,pulp_yield:0.6,pulp_ent:0.5,paper_eff:0.7,paper_ent:0.4,ply_eff:0.5,ply_ent:0.8,s_dec_lo:0.002,s_dec_hi:0.015,s_thresh:6,rec_eff:0.9,rec_ent:0.15,rec_lab:0.4,rec_nrg:0.5,yog_eff:0.7,yog_nrg:0.3,lab_gain:1.8,lab_dec:0.003,xp_loss:0.05,xp_nrg:0.2,xp_max:4,ent_diff:0.35,eff_slope:0.04,eff_floor:0.08,nrg_regen:0.05,nrg_cap:10,max_act:2,stoch:0.5,b_build:0.2,b_rec:0.8,b_bio:0.5},
+  bio:        {wood_regen:0.04,forest_cap:10,log_eff:0.8,log_ent:0.2,milk_regen:0.10,milk_cap:14,pulp_yield:0.5,pulp_ent:0.6,paper_eff:0.6,paper_ent:0.4,ply_eff:0.5,ply_ent:1.0,s_dec_lo:0.002,s_dec_hi:0.015,s_thresh:6,rec_eff:0.5,rec_ent:0.2,rec_lab:0.5,rec_nrg:0.6,yog_eff:1.1,yog_nrg:0.2,lab_gain:2.4,lab_dec:0.002,xp_loss:0.06,xp_nrg:0.2,xp_max:4,ent_diff:0.3,eff_slope:0.04,eff_floor:0.1,nrg_regen:0.06,nrg_cap:12,max_act:2,stoch:0.5,b_build:0.3,b_rec:0.3,b_bio:0.9},
+  entdeath:   {wood_regen:0.05,forest_cap:10,log_eff:1.2,log_ent:0.9,milk_regen:0.04,milk_cap:8,pulp_yield:0.8,pulp_ent:1.8,paper_eff:0.9,paper_ent:1.4,ply_eff:0.7,ply_ent:2.2,s_dec_lo:0.008,s_dec_hi:0.05,s_thresh:3,rec_eff:0.4,rec_ent:0.6,rec_lab:0.8,rec_nrg:1.1,yog_eff:0.5,yog_nrg:0.7,lab_gain:1.0,lab_dec:0.01,xp_loss:0.15,xp_nrg:0.4,xp_max:2,ent_diff:0.25,eff_slope:0.12,eff_floor:0.03,nrg_regen:0.025,nrg_cap:5,max_act:2,stoch:0.4,b_build:0.5,b_rec:0.3,b_bio:0.4},
+  hypergrowth:{wood_regen:0.08,forest_cap:16,log_eff:1.5,log_ent:0.4,milk_regen:0.06,milk_cap:10,pulp_yield:1.0,pulp_ent:1.0,paper_eff:1.1,paper_ent:0.7,ply_eff:0.9,ply_ent:1.4,s_dec_lo:0.003,s_dec_hi:0.02,s_thresh:5,rec_eff:0.5,rec_ent:0.4,rec_lab:0.7,rec_nrg:0.9,yog_eff:0.8,yog_nrg:0.3,lab_gain:2.0,lab_dec:0.003,xp_loss:0.04,xp_nrg:0.15,xp_max:6,ent_diff:0.5,eff_slope:0.04,eff_floor:0.08,nrg_regen:0.08,nrg_cap:14,max_act:3,stoch:0.7,b_build:0.7,b_rec:0.3,b_bio:0.5},
+};
+
+function applyPreset(name){
+  const pre=PRESETS[name];
+  if(!pre) return;
+  Object.assign(P,pre);
+  syncSliders();
+  addLog('PRESET: '+name.toUpperCase(),'lg');
+  init();
+}
+function randomize(){
+  for(const defs of Object.values(PDEFS)){
+    for(const d of defs){
+      const r=d.mx-d.mn;
+      P[d.k]=Math.min(d.mx,Math.max(d.mn,P[d.k]+(Math.random()-0.5)*0.8*r));
+    }
+  }
+  syncSliders();
+  addLog('RANDOMIZED','lg');
+  init();
+}
+
+// ── Field defs ─────────────────────────────────────────────────
+const FNAMES=['wood','pulp','paper','scrap','milk','yogurt','energy','labor','structure','entropy'];
+const FCOLORS={
+  wood:     [[8,18,6],   [60,240,40]],
+  pulp:     [[16,14,6],  [220,160,40]],
+  paper:    [[14,14,14], [210,210,200]],
+  scrap:    [[20,12,4],  [240,120,20]],
+  milk:     [[10,16,20], [160,220,255]],
+  yogurt:   [[8,20,18],  [30,240,210]],
+  energy:   [[4,8,22],   [30,120,255]],
+  labor:    [[8,20,8],   [100,255,60]],
+  structure:[[12,12,16], [200,200,190]],
+  entropy:  [[10,4,4],   [255,30,20]],
+  grad:     [[4,4,12],   [255,195,15]],
+};
+const FLBL={wood:'WOOD',pulp:'PULP',paper:'PAPER',scrap:'SCRAP',milk:'MILK',yogurt:'YOGURT',energy:'ENERGY',labor:'LABOR',structure:'STRUCT',entropy:'S ENTROPY',grad:'∇S GRAD'};
+const FCSS={wood:'var(--green)',pulp:'var(--amber)',paper:'var(--white)',scrap:'#ff8820',milk:'var(--blue)',yogurt:'var(--teal)',energy:'var(--blue)',labor:'var(--green)',structure:'var(--white)',entropy:'var(--red)',grad:'var(--gold)'};
+
+let W=16,H=16,roads=null,world=null;
+let fm={},hist={},HMAX=280;
+let step=0,running=false,iid=null,showRoads=true;
+let phWin=[];
+
+// ── Roads ──────────────────────────────────────────────────────
+function buildRoads(w,h){
+  const n=w*h,adj=Array.from({length:n},()=>new Set());
+  const edges=[];
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    if(x+1<w) edges.push([y*w+x,y*w+x+1,Math.random()]);
+    if(y+1<h) edges.push([y*w+x,(y+1)*w+x,Math.random()]);
+  }
+  edges.sort((a,b)=>a[2]-b[2]);
+  const par=Array.from({length:n},(_,i)=>i);
+  function find(x){return par[x]===x?x:par[x]=find(par[x]);}
+  for(const[u,v]of edges) if(find(u)!==find(v)){par[find(u)]=find(v);adj[u].add(v);adj[v].add(u);}
+  const ex=edges.filter(e=>!adj[e[0]].has(e[1]));
+  for(let i=0;i<Math.min(Math.floor(n*0.3),ex.length);i++){adj[ex[i][0]].add(ex[i][1]);adj[ex[i][1]].add(ex[i][0]);}
+  return adj;
+}
+
+// ── World ──────────────────────────────────────────────────────
+function makeWorld(w,h){
+  const f={};
+  for(const nm of FNAMES) f[nm]=new Float32Array(w*h);
+  const ix=(x,y)=>y*w+x;
+  for(let x=1;x<7;x++) for(let y=1;y<7;y++) f.wood[ix(x,y)]=6+Math.random()*4;
+  for(let x=10;x<w-1;x++) for(let y=1;y<6;y++) f.wood[ix(x,y)]=4+Math.random()*3;
+  for(let x=7;x<11;x++) for(let y=3;y<7;y++) f.pulp[ix(x,y)]=3+Math.random()*2;
+  for(let x=10;x<14;x++) for(let y=10;y<14;y++) f.scrap[ix(x,y)]=5+Math.random()*3;
+  for(let x=2;x<7;x++) for(let y=9;y<14;y++) f.milk[ix(x,y)]=4+Math.random()*3;
+  for(let i=0;i<w*h;i++) f.energy[i]=3+Math.random()*2;
+  for(let x=6;x<11;x++) for(let y=6;y<11;y++) f.labor[ix(x,y)]=2+Math.random()*3;
+  for(let x=7;x<10;x++) for(let y=7;y<10;y++) f.structure[ix(x,y)]=3;
+  for(let i=0;i<w*h;i++) f.entropy[i]=0.2+Math.random()*0.3;
+  return {f,w,h};
+}
+function cloneW(wr){
+  const f={};
+  for(const nm of FNAMES) f[nm]=new Float32Array(wr.f[nm]);
+  return {f,w:wr.w,h:wr.h};
+}
+
+// ── Operators ──────────────────────────────────────────────────
+function eff(s){return Math.max(P.eff_floor,Math.exp(-P.eff_slope*s));}
+
+function opPulp(r,w,i){
+  if(w.wood[i]>=2&&w.energy[i]>=0.8&&w.labor[i]>=0.6){
+    const e=eff(w.entropy[i]);
+    w.wood[i]-=2;w.pulp[i]+=P.pulp_yield*2*e;
+    w.energy[i]-=0.8;w.labor[i]-=0.6;w.entropy[i]+=P.pulp_ent/e;
+  }
+}
+function opPaper(r,w,i){
+  if(w.pulp[i]>=2&&w.energy[i]>=0.6&&w.labor[i]>=0.5&&r.structure[i]>=1){
+    const e=eff(w.entropy[i]);
+    w.pulp[i]-=2;w.paper[i]+=P.paper_eff*2*e;
+    w.energy[i]-=0.6;w.labor[i]-=0.5;w.entropy[i]+=P.paper_ent/e;
+  }
+}
+function opPly(r,w,i){
+  if(w.wood[i]>=3&&w.energy[i]>=1.0&&w.labor[i]>=1.0){
+    const e=eff(w.entropy[i]);
+    w.wood[i]-=3;w.structure[i]+=P.ply_eff*2*e;
+    w.energy[i]-=1.0;w.labor[i]-=1.0;w.entropy[i]+=P.ply_ent/e;
+  }
+}
+function opRecycle(r,w,i){
+  if(w.scrap[i]>=2&&w.energy[i]>=P.rec_nrg&&w.labor[i]>=P.rec_lab){
+    const e=eff(w.entropy[i]);
+    w.scrap[i]-=2;w.pulp[i]+=P.rec_eff*2*e;
+    w.energy[i]-=P.rec_nrg;w.labor[i]-=P.rec_lab;
+    const d=P.rec_ent*e;w.entropy[i]-=d;
+    const nb=[...roads[i]];
+    if(nb.length) for(const j of nb) w.entropy[j]+=d/nb.length;
+  }
+}
+function opYogurt(r,w,i){
+  if(w.milk[i]>=1&&w.energy[i]>=P.yog_nrg){
+    const e=eff(w.entropy[i]);
+    w.milk[i]-=1;w.yogurt[i]+=P.yog_eff*e;
+    w.energy[i]-=P.yog_nrg;w.entropy[i]+=0.2;
+  }
+}
+function opEat(r,w,i){
+  const e=eff(w.entropy[i]);
+  if(w.yogurt[i]>=0.5&&w.labor[i]<12){
+    w.yogurt[i]-=0.5;w.labor[i]+=P.lab_gain*e;w.entropy[i]-=0.08;
+  } else if(w.milk[i]>=0.8&&w.labor[i]<12){
+    w.milk[i]-=0.8;w.labor[i]+=P.lab_gain*0.7*e;w.entropy[i]-=0.05;
+  }
+}
+function opXport(r,w,src,dst,field,tr){
+  if(tr[src]>=P.xp_max) return;
+  if(r[field][src]>=0.5&&r.energy[src]>=P.xp_nrg){
+    tr[src]++;
+    w[field][src]-=0.5;w[field][dst]+=0.5*(1-P.xp_loss);
+    w.energy[src]-=P.xp_nrg;w.entropy[src]+=0.12;
+  }
+}
+
+// ── Diffusion ──────────────────────────────────────────────────
+function diffEntBuf(f,out,w,h){
+  const k=P.ent_diff,s=f.entropy;
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=y*w+x;let v=s[i]*(1-k*0.5);
+    for(const[dx,dy]of[[-1,0],[1,0],[0,-1],[0,1]])
+      v+=s[((y+dy+h)%h)*w+((x+dx+w)%w)]*(k*0.5/4);
+    out.entropy[i]=Math.max(0,v);
+  }
+}
+function diffLabBuf(f,out,w){
+  const s=f.labor;
+  for(let i=0;i<w*w;i++){
+    let v=s[i]*0.86;
+    for(const j of roads[i]) v+=s[j]*0.04;
+    out.labor[i]=Math.max(0,v);
+  }
+}
+function diffEnt(f,w,h){ diffEntBuf(f,f,w,h); }
+function diffLab(f,w){ diffLabBuf(f,f,w); }
+
+// ── Step ───────────────────────────────────────────────────────
+function stepWorld(wr){
+  const{f:fin,w,h}=wr;
+  const f={},next={};
+  for(const nm of FNAMES){ f[nm]=fin[nm]; next[nm]=new Float32Array(fin[nm]); }
+  const n=w*h,tr=new Float32Array(n),s=P.stoch;
+
+  for(let i=0;i<n;i++){
+    let acts=0;
+    const can=()=>acts<P.max_act&&++acts;
+
+    // passive
+    next.wood[i]+=P.wood_regen*(1-f.wood[i]/P.forest_cap)*Math.max(0.1,1-f.entropy[i]/30);
+    next.milk[i]+=P.milk_regen*(1-f.milk[i]/P.milk_cap)*Math.max(0.15,1-f.entropy[i]/25);
+    if(f.paper[i]>0){const lp=0.01*(1+f.entropy[i]/20);const ls=Math.min(f.paper[i],lp);next.paper[i]-=ls;next.scrap[i]+=ls*0.8;}
+    if(f.structure[i]>0){next.structure[i]-=f.entropy[i]>P.s_thresh?P.s_dec_hi*f.entropy[i]:P.s_dec_lo*f.entropy[i];if(next.structure[i]<0){next.scrap[i]+=0.3;next.structure[i]=0;}}
+    if(f.labor[i]>0){next.labor[i]-=P.lab_dec*f.entropy[i];if(next.labor[i]<0)next.labor[i]=0;}
+    if(f.energy[i]<P.nrg_cap) next.energy[i]+=P.nrg_regen;
+
+    // survival
+    if(can()) opEat(f,next,i);
+
+    // active loops
+    if(can()&&f.scrap[i]>2&&Math.random()<P.b_rec*s) opRecycle(f,next,i);
+    if(can()&&f.milk[i]>1&&Math.random()<P.b_bio*s) opYogurt(f,next,i);
+    if(can()&&f.wood[i]>2&&f.labor[i]>0.6&&Math.random()<P.b_build*s) opPulp(f,next,i);
+    if(can()&&f.pulp[i]>2&&f.labor[i]>0.5&&f.structure[i]>0.5&&Math.random()<P.b_build*s) opPaper(f,next,i);
+    if(can()&&f.wood[i]>3&&f.labor[i]>1&&Math.random()<P.b_build*s*0.4) opPly(f,next,i);
+  }
+
+  // transport
+  const sur={wood:2.5,pulp:2,paper:2,scrap:2,milk:2,yogurt:1.5,energy:3};
+  const def={wood:0.8,pulp:0.8,paper:0.8,scrap:0.8,milk:0.8,yogurt:0.4,energy:1.5};
+  for(const field of Object.keys(sur)){
+    for(let i=0;i<w*w;i++){
+      if(f[field][i]>sur[field]){
+        const nb=[...roads[i]];if(!nb.length) continue;
+        const j=nb[Math.floor(Math.random()*nb.length)];
+        if(f[field][j]<def[field]) opXport(f,next,i,j,field,tr);
+      }
+    }
+  }
+
+  diffEntBuf(f,next,w,h);diffLabBuf(f,next,w);
+  return{f:next,w,h};
+}
+
+// ── Gradient ───────────────────────────────────────────────────
+function computeGrad(f,w,h){
+  const S=f.entropy,g=new Float32Array(w*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=y*w+x;let s=0,c=0;
+    for(const[dx,dy]of[[-1,0],[1,0],[0,-1],[0,1]]){s+=S[((y+dy+h)%h)*w+((x+dx+w)%w)];c++;}
+    g[i]=Math.abs(S[i]-s/c);
+  }
+  return g;
+}
+
+// ── Viability ──────────────────────────────────────────────────
+function fsum(a){let s=0;for(let i=0;i<a.length;i++)s+=a[i];return s;}
+function via(f){
+  return 0.5*fsum(f.structure)+1.5*fsum(f.labor)+0.6*(fsum(f.yogurt)+fsum(f.milk))+0.4*fsum(f.paper)+0.3*fsum(f.energy)-0.8*fsum(f.entropy);
+}
+
+// ── Phase detection ────────────────────────────────────────────
+function detectPhase(){
+  if(phWin.length<10) return{name:'INITIALIZING',color:'var(--teal)'};
+  const r=phWin.slice(-10),o=phWin.slice(-20,-10);
+  if(!o.length) return{name:'MEASURING',color:'var(--dim)'};
+  const avg=(arr,k)=>arr.reduce((a,x)=>a+x[k],0)/arr.length;
+  const dV=avg(r,'v')-avg(o,'v'),dE=avg(r,'e')-avg(o,'e'),lv=avg(r,'v'),ll=avg(r,'l');
+  if(ll<20)           return{name:'LABOR COLLAPSE', color:'var(--red)'};
+  if(lv<0)            return{name:'ENTROPY DEATH',  color:'var(--red)'};
+  if(dE>15&&dV<-10)   return{name:'COLLAPSE CASCADE',color:'#ff8820'};
+  if(dV>20&&dE<5)     return{name:'STABLE GROWTH',  color:'var(--green)'};
+  if(dV>5&&dE<10)     return{name:'GROWTH',         color:'var(--teal)'};
+  if(Math.abs(dV)<5&&Math.abs(dE)<5) return{name:'STABLE',color:'var(--teal)'};
+  if(dE>8)            return{name:'ENTROPY RISING', color:'var(--amber)'};
+  if(dV<-5)           return{name:'DECLINING',      color:'#ff8820'};
+  return{name:'STAGNANT',color:'var(--dim)'};
+}
+
+// ── History ────────────────────────────────────────────────────
+const CKEYS=['viability','entropy','labor','paper','material'];
+function initHist(){hist={};for(const k of CKEYS)hist[k]=[];phWin=[];}
+function recHist(){
+  const f=world.f;
+  const v=via(f),e=fsum(f.entropy),l=fsum(f.labor);
+  hist.viability.push(v);hist.entropy.push(e);hist.labor.push(l);
+  hist.paper.push(fsum(f.paper));hist.material.push(fsum(f.wood)+fsum(f.pulp)+fsum(f.scrap));
+  phWin.push({v,e,l});
+  for(const k of CKEYS) if(hist[k].length>HMAX) hist[k].shift();
+  if(phWin.length>30) phWin.shift();
+}
+
+// ── Render ─────────────────────────────────────────────────────
+function renderField(canvas,data,cd,key){
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d'),img=ctx.createImageData(W,H);
+  let mx=0;for(let i=0;i<data.length;i++) if(data[i]>mx)mx=data[i];
+  fm[key]=Math.max(fm[key]||1,mx,0.5);mx=fm[key];
+  for(let i=0;i<W*H;i++){
+    const t=Math.min(1,data[i]/mx);
+    img.data[i*4]  =cd[0][0]+t*(cd[1][0]-cd[0][0]);
+    img.data[i*4+1]=cd[0][1]+t*(cd[1][1]-cd[0][1]);
+    img.data[i*4+2]=cd[0][2]+t*(cd[1][2]-cd[0][2]);
+    img.data[i*4+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+
+function renderRoads(canvas){
+  const fc=canvas.previousElementSibling;
+  const cw=fc.width,ch=fc.height;
+  canvas.width=cw;canvas.height=ch;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,cw,ch);
+  if(!showRoads||!roads) return;
+  ctx.strokeStyle='rgba(255,255,255,0.7)';ctx.lineWidth=Math.max(1,cw/(W*4));
+  const cW=cw/W,cH=ch/H;
+  for(let i=0;i<W*H;i++){
+    const x=i%W,y=Math.floor(i/W);
+    for(const j of roads[i]) if(j>i){
+      ctx.beginPath();
+      ctx.moveTo((x+0.5)*cW,(y+0.5)*cH);
+      ctx.lineTo((j%W+0.5)*cW,(Math.floor(j/W)+0.5)*cH);
+      ctx.stroke();
+    }
+  }
+}
+
+function renderChart(canvas,data,color,lbl){
+  const CW=canvas.parentElement.clientWidth||210,CH=44;
+  canvas.width=CW;canvas.height=CH;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#07080a';ctx.fillRect(0,0,CW,CH);
+  if(data.length<2){if(lbl)lbl.textContent='—';return;}
+  let mn=Infinity,mx=-Infinity;
+  for(const v of data){if(v<mn)mn=v;if(v>mx)mx=v;}
+  if(mx-mn<0.01){mn-=1;mx+=1;}
+  if(mn<0){
+    const zy=CH-((0-mn)/(mx-mn))*CH;
+    ctx.strokeStyle='#22242e';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,zy);ctx.lineTo(CW,zy);ctx.stroke();
+  }
+  ctx.beginPath();
+  for(let i=0;i<data.length;i++){
+    const px=(i/(data.length-1))*CW,py=CH-((data[i]-mn)/(mx-mn))*(CH-4)-2;
+    i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  }
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+  if(lbl) lbl.textContent=data[data.length-1].toFixed(1);
+}
+
+// ── DOM ─────────────────────────────────────────────────────────
+const CDEFS=[
+  {key:'viability',label:'VIABILITY ω',  color:'var(--teal)'},
+  {key:'entropy',  label:'ENTROPY S',    color:'var(--red)'},
+  {key:'labor',    label:'LABOR',        color:'var(--green)'},
+  {key:'paper',    label:'PAPER OUTPUT', color:'var(--white)'},
+  {key:'material', label:'MATERIAL',     color:'var(--amber)'},
+];
+
+function buildCharts(){
+  const w=document.getElementById('chw');
+  w.innerHTML='<h2>// DYNAMICS</h2>';
+  for(const{key,label,color}of CDEFS){
+    const d=document.createElement('div');d.className='cb';
+    d.innerHTML=`<div class="cl"><span>${label}</span><span class="cv" id="cv${key}" style="color:${color}">—</span></div><canvas class="ch" id="ch${key}" height="44"></canvas>`;
+    w.appendChild(d);
+  }
+}
+
+function viewList(){
+  const v=document.getElementById('vsel').value;
+  return v==='all'?FNAMES:v==='grad'?['grad']:[v];
+}
+
+function buildGrid(){
+  const g=document.getElementById('fgrid');g.innerHTML='';
+  const fl=viewList();
+  g.style.gridTemplateColumns=fl.length>1?'repeat(5,1fr)':'1fr';
+  for(const nm of fl){
+    const fp=document.createElement('div');fp.className='fp';fp.id='fp'+nm;
+    fp.innerHTML=`<div class="fl"><span style="color:${FCSS[nm]||'var(--white)'}">${FLBL[nm]||nm}</span><span class="ft" id="ft${nm}" style="color:${FCSS[nm]||'var(--white)'}">—</span></div><div class="cw"><canvas class="fc" id="fc${nm}" width="${W}" height="${H}"></canvas><canvas class="ro" id="ro${nm}"></canvas></div>`;
+    g.appendChild(fp);
+  }
+}
+
+function renderGrids(){
+  for(const nm of viewList()){
+    const fc=document.getElementById('fc'+nm);
+    const ro=document.getElementById('ro'+nm);
+    if(!fc) continue;
+    const data=nm==='grad'?computeGrad(world.f,W,H):world.f[nm];
+    renderField(fc,data,FCOLORS[nm]||FCOLORS.entropy,nm);
+    if(ro) renderRoads(ro);
+    const ft=document.getElementById('ft'+nm);
+    if(ft){let s=0;for(let i=0;i<data.length;i++)s+=data[i];ft.textContent=s.toFixed(0);}
+  }
+}
+
+function renderCharts(){
+  for(const{key,color}of CDEFS){
+    const c=document.getElementById('ch'+key),l=document.getElementById('cv'+key);
+    if(c) renderChart(c,hist[key],color,l);
+  }
+}
+
+function renderPhase(){
+  const f=world.f;
+  const v=via(f),e=fsum(f.entropy);
+  document.getElementById('phvia').textContent=v.toFixed(0);
+  document.getElementById('phvia').style.color=v>0?'var(--teal)':'var(--red)';
+  const dS=hist.entropy.length>5?e-hist.entropy[hist.entropy.length-5]:0;
+  const ds=document.getElementById('phds');
+  ds.textContent=(dS>0?'+':'')+dS.toFixed(1);
+  ds.style.color=dS>5?'var(--red)':dS>0?'var(--amber)':'var(--teal)';
+  document.getElementById('phmat').textContent=(fsum(f.wood)+fsum(f.pulp)+fsum(f.scrap)).toFixed(0);
+  document.getElementById('phbio').textContent=(fsum(f.yogurt)+fsum(f.milk)).toFixed(0);
+  document.getElementById('phpap').textContent=fsum(f.paper).toFixed(0);
+  const ph=detectPhase();
+  const b=document.getElementById('badge');
+  b.textContent=ph.name;b.style.color=ph.color;b.style.borderColor=ph.color+'66';
+}
+
+// ── Param panel ────────────────────────────────────────────────
+const SECMAP={ext:'body-ext',ind:'body-ind',rec:'body-rec',bio:'body-bio',tr:'body-tr',ent:'body-ent',ctl:'body-ctl'};
+function buildParams(){
+  for(const[sec,bodyId]of Object.entries(SECMAP)){
+    const body=document.getElementById(bodyId);
+    body.innerHTML='';
+    for(const d of PDEFS[sec]){
+      const row=document.createElement('div');row.className='pr';
+      row.innerHTML=`<label>${d.l}</label><input type="range" id="sl${d.k}" min="${d.mn}" max="${d.mx}" step="${d.st}" value="${P[d.k]}"><span class="pv" id="pv${d.k}">${fmtP(P[d.k])}</span>`;
+      body.appendChild(row);
+      row.querySelector('input').addEventListener('input',function(){P[d.k]=parseFloat(this.value);document.getElementById('pv'+d.k).textContent=fmtP(P[d.k]);});
+    }
+  }
+}
+function syncSliders(){
+  for(const defs of Object.values(PDEFS)){
+    for(const d of defs){
+      const sl=document.getElementById('sl'+d.k),pv=document.getElementById('pv'+d.k);
+      if(sl) sl.value=P[d.k];if(pv) pv.textContent=fmtP(P[d.k]);
+    }
+  }
+}
+function fmtP(v){return v<0.1?v.toFixed(3):v<1?v.toFixed(2):v.toFixed(1);}
+function toggleSec(name){
+  const hdr=document.querySelector('#sec-'+name+' .psec-hdr');
+  const body=document.getElementById('body-'+name);
+  hdr.classList.toggle('open');body.classList.toggle('open');
+}
+
+// ── Log ─────────────────────────────────────────────────────────
+let lastLog=-15;
+function checkLog(){
+  if(step-lastLog<15)return;lastLog=step;
+  const f=world.f;
+  const lab=fsum(f.labor),ent=fsum(f.entropy),pap=fsum(f.paper);
+  if(lab<10) addLog('LABOR COLLAPSE','lc');
+  if(ent>fsum(f.wood)*8) addLog('ENTROPY EXCEEDS MATERIAL','lw');
+  if(pap<5&&step>50) addLog('PAPER FAILING','lw');
+  addLog(`T=${step}  ω=${via(f).toFixed(0)}  S=${ent.toFixed(0)}  L=${lab.toFixed(0)}`,'');
+}
+function addLog(msg,cls){
+  const el=document.getElementById('log');
+  const d=document.createElement('div');
+  if(cls)d.className=cls;d.textContent='> '+msg;
+  el.insertBefore(d,el.firstChild);
+  while(el.children.length>28)el.removeChild(el.lastChild);
+}
+
+// ── Tick ──────────────────────────────────────────────────────
+function tick(){
+  world=stepWorld(world);step++;recHist();
+  document.getElementById('sn').textContent=String(step).padStart(4,'0');
+  renderGrids();renderCharts();renderPhase();checkLog();
+}
+
+// ── Init ──────────────────────────────────────────────────────
+function init(){
+  W=parseInt(document.getElementById('sz').value);H=W;
+  roads=buildRoads(W,H);
+  fm={};world=makeWorld(W,H);step=0;initHist();
+  buildGrid();renderGrids();
+  let ec=0;for(const s of roads)ec+=s.size;
+  addLog(`INIT ${W}×${H} · ${ec/2|0} ROADS · MAX_ACT=${P.max_act}`,'lg');
+  setTimeout(()=>{renderGrids();renderCharts();},50);
+}
+
+// ── Controls ──────────────────────────────────────────────────
+const pb=document.getElementById('bplay');
+pb.addEventListener('click',()=>{
+  running=!running;
+  if(running){pb.textContent='⏸ PAUSE';pb.classList.add('active');iid=setInterval(tick,parseInt(document.getElementById('spd').value));}
+  else{pb.textContent='▶ RUN';pb.classList.remove('active');clearInterval(iid);}
+});
+document.getElementById('bstep').addEventListener('click',()=>{if(!running)tick();});
+document.getElementById('breset').addEventListener('click',()=>{running=false;clearInterval(iid);pb.textContent='▶ RUN';pb.classList.remove('active');init();});
+document.getElementById('spd').addEventListener('change',()=>{if(running){clearInterval(iid);iid=setInterval(tick,parseInt(document.getElementById('spd').value));}});
+document.getElementById('sz').addEventListener('change',()=>{running=false;clearInterval(iid);pb.textContent='▶ RUN';pb.classList.remove('active');init();});
+document.getElementById('vsel').addEventListener('change',()=>{buildGrid();renderGrids();});
+document.getElementById('broads').addEventListener('click',function(){
+  showRoads=!showRoads;
+  this.textContent=showRoads?'HIDE ROADS':'SHOW ROADS';
+  this.classList.toggle('active',showRoads);
+  renderGrids();
+});
+
+buildParams();buildCharts();init();
+</script>
+</body>
+</html>
