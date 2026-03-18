@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSVP Field Simulator v3</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+  :root {
+    --bg:#08080a; --bg2:#0d0d10; --bg3:#121218; --panel:#0f0f14;
+    --border:#252530; --brite:#353545;
+    --green:#6fff50; --gdim:#2a6a1a; --gdark:#132210;
+    --amber:#ffbc30; --adim:#6a4a10;
+    --red:#ff3a2a; --rdim:#6a1a10;
+    --blue:#40aaff; --cyan:#40ffee; --mag:#ff44cc; --mdim:#881844;
+    --white:#ddddc8; --dim:#44443a;
+    --A:#6fff50; --B:#ff44cc;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--white);font-family:'Share Tech Mono',monospace;font-size:12px;min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0,rgba(0,0,0,.12) 1px,transparent 1px,transparent 3px);pointer-events:none;z-index:1000;}
+  body::after{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.65) 100%);pointer-events:none;z-index:999;}
+  #header{display:flex;align-items:center;gap:16px;padding:9px 16px;border-bottom:1px solid var(--border);background:var(--bg2);}
+  #header h1{font-family:'VT323',monospace;font-size:26px;color:var(--green);text-shadow:0 0 10px #6fff5066;letter-spacing:3px;}
+  .sub{color:var(--dim);font-size:10px;letter-spacing:2px;text-transform:uppercase;}
+  #step-disp{margin-left:auto;font-family:'VT323',monospace;font-size:22px;color:var(--amber);text-shadow:0 0 8px #ffbc3066;}
+  #controls{display:flex;align-items:center;gap:8px;padding:7px 16px;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--bg2);}
+  button{background:var(--bg3);border:1px solid var(--brite);color:var(--green);font-family:'Share Tech Mono',monospace;font-size:11px;padding:4px 11px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .1s;}
+  button:hover{background:var(--gdark);border-color:var(--green);box-shadow:0 0 6px #6fff5044;}
+  button.active{background:var(--gdark);border-color:var(--green);}
+  button.danger{color:var(--red);border-color:var(--rdim);}
+  button.danger:hover{background:#1a0808;border-color:var(--red);}
+  .cgrp{display:flex;align-items:center;gap:5px;border-left:1px solid var(--border);padding-left:8px;}
+  .clbl{color:var(--dim);font-size:10px;letter-spacing:1px;}
+  select{background:var(--bg3);border:1px solid var(--brite);color:var(--amber);font-family:'Share Tech Mono',monospace;font-size:11px;padding:3px 6px;cursor:pointer;}
+  #policy-bar{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .pol-cell{padding:6px 16px;display:flex;align-items:center;gap:10px;}
+  .pol-cell:first-child{border-right:1px solid var(--border);background:#0a0a0e;}
+  .pol-cell:last-child{background:#0e0a0e;}
+  .pol-letter{font-family:'VT323',monospace;font-size:22px;}
+  .pol-letter.A{color:var(--A);text-shadow:0 0 8px #6fff5066;}
+  .pol-letter.B{color:var(--B);text-shadow:0 0 8px #ff44cc66;}
+  .tag{font-size:10px;letter-spacing:2px;border:1px solid;padding:2px 8px;}
+  .tag.A{color:var(--A);border-color:var(--gdim);}
+  .tag.B{color:var(--B);border-color:var(--mdim);}
+  #main{display:grid;grid-template-columns:1fr 1fr 238px;height:calc(100vh - 114px);overflow:hidden;}
+  .world-panel{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .wp-header{font-family:'VT323',monospace;font-size:15px;letter-spacing:3px;color:var(--dim);padding:6px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .wletter{font-size:20px;}
+  .field-scroll{overflow-y:auto;padding:8px;flex:1;}
+  .field-grid{display:grid;gap:7px;}
+  .fp{background:var(--panel);border:1px solid var(--border);}
+  .fp .fl{padding:3px 6px;font-size:9px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+  .fp .ft{font-family:'VT323',monospace;font-size:13px;}
+  .fp .cw{position:relative;}
+  .fp canvas.fc{display:block;width:100%;image-rendering:pixelated;}
+  .fp canvas.ro{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+  .road-note{padding:4px 12px;font-size:9px;color:var(--dim);letter-spacing:1px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+  #sidebar{display:flex;flex-direction:column;overflow:hidden;}
+  #charts-wrap{flex:1;overflow-y:auto;padding:9px;}
+  #charts-wrap h2{font-family:'VT323',monospace;font-size:15px;color:var(--dim);letter-spacing:3px;margin-bottom:7px;}
+  .chart-block{margin-bottom:9px;}
+  .chart-lbl{font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;display:flex;justify-content:space-between;align-items:center;}
+  .cvs{display:flex;gap:6px;}
+  .cv{font-family:'VT323',monospace;font-size:13px;}
+  .cv.A{color:var(--A);}
+  .cv.B{color:var(--B);}
+  canvas.chart{display:block;width:100%;border:1px solid var(--border);background:var(--bg);}
+  #via-block{padding:9px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+  #via-block h3{font-family:'VT323',monospace;font-size:14px;color:var(--dim);letter-spacing:3px;margin-bottom:5px;}
+  .via-row{display:flex;justify-content:space-between;margin-bottom:3px;}
+  .via-val{font-family:'VT323',monospace;font-size:21px;}
+  .via-val.A{color:var(--A);}
+  .via-val.B{color:var(--B);}
+  #log-wrap{padding:0 9px 7px;max-height:88px;overflow-y:auto;border-top:1px solid var(--border);flex-shrink:0;}
+  #log{font-size:9px;color:var(--gdim);line-height:1.7;}
+  .lw{color:var(--adim)!important;}
+  .lc{color:var(--rdim)!important;}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>RSVP FIELD SIM v3</h1>
+  <span class="sub">ENTROPY-CONSERVED · ROAD-CONSTRAINED · ACTION-CAPPED</span>
+  <span id="step-disp">T=<span id="sn">0000</span></span>
+</div>
+
+<div id="controls">
+  <button id="btn-play">▶ RUN</button>
+  <button id="btn-step">STEP</button>
+  <button id="btn-reset" class="danger">RESET</button>
+  <div class="cgrp">
+    <span class="clbl">SPEED</span>
+    <select id="spd">
+      <option value="500">SLOW</option>
+      <option value="150" selected>MED</option>
+      <option value="40">FAST</option>
+      <option value="8">MAX</option>
+    </select>
+  </div>
+  <div class="cgrp">
+    <span class="clbl">SIZE</span>
+    <select id="sz">
+      <option value="16" selected>16×16</option>
+      <option value="24">24×24</option>
+      <option value="32">32×32</option>
+    </select>
+  </div>
+  <div class="cgrp"><button id="btn-roads">SHOW ROADS</button></div>
+  <div class="cgrp">
+    <span class="clbl">VIEW</span>
+    <select id="field-sel">
+      <option value="all">ALL FIELDS</option>
+      <option value="entropy">ENTROPY S</option>
+      <option value="grad">ENTROPY GRADIENT</option>
+      <option value="structure">STRUCTURE</option>
+      <option value="wood">WOOD Φ₁</option>
+      <option value="scrap">SCRAP Φ₂</option>
+      <option value="food">FOOD Φ₃</option>
+      <option value="energy">ENERGY Φ₄</option>
+      <option value="labor">LABOR Φ₅</option>
+    </select>
+  </div>
+</div>
+
+<div id="policy-bar">
+  <div class="pol-cell">
+    <span class="pol-letter A">A</span>
+    <select id="pol-A">
+      <option value="balanced">BALANCED</option>
+      <option value="recycle_heavy">RECYCLE-HEAVY</option>
+      <option value="survival">SURVIVAL-FIRST</option>
+      <option value="build_heavy">BUILD-HEAVY</option>
+    </select>
+    <span class="tag A">SIM A</span>
+  </div>
+  <div class="pol-cell">
+    <span class="pol-letter B">B</span>
+    <select id="pol-B">
+      <option value="balanced">BALANCED</option>
+      <option value="recycle_heavy">RECYCLE-HEAVY</option>
+      <option value="survival" selected>SURVIVAL-FIRST</option>
+      <option value="build_heavy">BUILD-HEAVY</option>
+    </select>
+    <span class="tag B">SIM B</span>
+  </div>
+</div>
+
+<div id="main">
+  <div class="world-panel">
+    <div class="wp-header">
+      <span class="wletter" style="color:var(--A)">A</span>
+      <span id="lbl-A">BALANCED</span>
+    </div>
+    <div class="field-scroll"><div class="field-grid" id="gridA"></div></div>
+    <div class="road-note">◈ WHITE = ROAD EDGES · TRANSPORT CONSTRAINED TO NETWORK</div>
+  </div>
+  <div class="world-panel">
+    <div class="wp-header">
+      <span class="wletter" style="color:var(--B)">B</span>
+      <span id="lbl-B">SURVIVAL-FIRST</span>
+    </div>
+    <div class="field-scroll"><div class="field-grid" id="gridB"></div></div>
+    <div style="height:24px;flex-shrink:0"></div>
+  </div>
+  <div id="sidebar">
+    <div id="charts-wrap"><h2>// DYNAMICS A vs B</h2></div>
+    <div id="via-block">
+      <h3>// VIABILITY ω</h3>
+      <div class="via-row">
+        <span style="color:var(--dim);font-size:9px;letter-spacing:2px">SIM A</span>
+        <span class="via-val A" id="via-A">—</span>
+      </div>
+      <div class="via-row">
+        <span style="color:var(--dim);font-size:9px;letter-spacing:2px">SIM B</span>
+        <span class="via-val B" id="via-B">—</span>
+      </div>
+    </div>
+    <div id="log-wrap"><div id="log"></div></div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// RSVP FIELD SIMULATOR v3
+//
+// MODEL INTERPRETATION
+//
+// The system represents a coupled scalar-field model of production,
+// maintenance, and entropy management.
+//
+//   Φ = {wood, scrap, food, energy, labor, structure}
+//   S = entropy field
+//
+// Each cell is not an "agent" in the conventional sense but a local
+// region of space with interacting resource densities. There is no
+// central planner, no utility maximizer. Behavior emerges from the
+// composition of local transformations under shared constraints.
+//
+// The dynamics arise from three mechanisms:
+//
+//   1. Local transformations  — build, recycle, cook, eat/rest
+//   2. Network transport      — resources flow only along roads
+//   3. Diffusion              — entropy and labor spread spatially
+//
+// Key invariants enforced by design:
+//
+//   - Entropy is conserved: recycling redistributes it, never destroys it
+//   - No subsystem can be optimized in isolation
+//   - Infrastructure (roads) constrains all coordination
+//   - Local decisions produce global structure
+//   - Action caps prevent unrealistic local self-sufficiency
+//
+// The goal is not realism but qualitative behavior:
+//
+//   - collapse cascades
+//   - resource trapping behind road bottlenecks
+//   - entropy gradient formation (stress lines)
+//   - policy divergence under identical initial conditions
+//
+// Viability ω is a diagnostic, not a conserved quantity.
+// When ω < 0, the system is consuming itself faster than it produces.
+// ================================================================
+
+const FNAMES = ['wood','scrap','food','energy','labor','structure','entropy'];
+
+// Derived field — computed each frame, not stored in world state
+const FCOLORS = {
+  wood:      [[10,22,8],   [70,255,50]],
+  scrap:     [[22,16,4],   [255,185,35]],
+  food:      [[4,20,20],   [35,245,220]],
+  energy:    [[4,10,28],   [35,135,255]],
+  labor:     [[8,22,8],    [110,255,70]],
+  structure: [[14,14,16],  [215,215,195]],
+  entropy:   [[10,4,4],    [255,35,25]],
+  grad:      [[4,4,14],    [255,200,20]],
+};
+const FLABELS = {
+  wood:'Φ₁ WOOD', scrap:'Φ₂ SCRAP', food:'Φ₃ FOOD',
+  energy:'Φ₄ ENERGY', labor:'Φ₅ LABOR', structure:'Φ₆ STRUCT',
+  entropy:'S ENTROPY', grad:'∇S GRAD',
+};
+const FCOLCSS = {
+  wood:'var(--green)', scrap:'var(--amber)', food:'var(--cyan)',
+  energy:'var(--blue)', labor:'var(--green)', structure:'var(--white)',
+  entropy:'var(--red)', grad:'var(--amber)',
+};
+
+let W=16, H=16;
+let worldA=null, worldB=null, roads=null;
+let fieldMaxA={}, fieldMaxB={};   // persistent maxima: fix 10
+let hist={};
+const HMAX=260;
+let stepCount=0, running=false, iid=null, showRoads=false;
+
+// ── Road network ──────────────────────────────────────────────
+// Built via Kruskal's MST over the lattice, then ~30% redundant
+// edges added for realism. This ensures full connectivity while
+// preserving genuine bottlenecks and dead-ends.
+//
+// Roads are the only medium for resource transport. Nodes not
+// on a road cannot send or receive material. This is what creates
+// spatial inequality even under identical initial conditions.
+function buildRoads(w,h){
+  const n=w*h, adj=Array.from({length:n},()=>new Set());
+  const edges=[];
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    if(x+1<w) edges.push([y*w+x, y*w+x+1, Math.random()]);
+    if(y+1<h) edges.push([y*w+x, (y+1)*w+x, Math.random()]);
+  }
+  edges.sort((a,b)=>a[2]-b[2]);
+  const par=Array.from({length:n},(_,i)=>i);
+  function find(x){return par[x]===x?x:par[x]=find(par[x]);}
+  for(const [u,v] of edges){
+    if(find(u)!==find(v)){par[find(u)]=find(v);adj[u].add(v);adj[v].add(u);}
+  }
+  const extra=edges.filter(e=>!adj[e[0]].has(e[1]));
+  for(let i=0;i<Math.min(Math.floor(n*0.3),extra.length);i++){
+    adj[extra[i][0]].add(extra[i][1]);adj[extra[i][1]].add(extra[i][0]);
+  }
+  return adj;
+}
+
+// ── World initialization ──────────────────────────────────────
+// Both worlds are cloned from the same seed, giving identical
+// initial conditions. Policy is the only variable. This is what
+// makes the comparison a controlled experiment rather than noise.
+function makeWorld(w,h){
+  const f={};
+  for(const nm of FNAMES) f[nm]=new Float32Array(w*h);
+  const ix=(x,y)=>y*w+x;
+  for(let x=2;x<7;x++)    for(let y=2;y<7;y++)   f.wood[ix(x,y)]=7+Math.random()*4;
+  for(let x=10;x<w-1;x++) for(let y=1;y<6;y++)   f.wood[ix(x,y)]=4+Math.random()*3;
+  for(let x=9;x<13;x++)   for(let y=10;y<14;y++)  f.scrap[ix(x,y)]=5+Math.random()*4;
+  for(let x=5;x<11;x++)   for(let y=9;y<13;y++)   f.food[ix(x,y)]=4+Math.random()*3;
+  for(let i=0;i<w*h;i++)  f.energy[i]=3+Math.random()*2;
+  for(let x=6;x<11;x++)   for(let y=6;y<10;y++)   f.labor[ix(x,y)]=2+Math.random()*3;
+  for(let x=7;x<10;x++)   for(let y=7;y<9;y++)    f.structure[ix(x,y)]=3;
+  for(let i=0;i<w*h;i++)  f.entropy[i]=0.2+Math.random()*0.3;
+  return {f,w,h};
+}
+function clone(world){
+  const f={};
+  for(const nm of FNAMES) f[nm]=new Float32Array(world.f[nm]);
+  return {f,w:world.w,h:world.h};
+}
+function initFieldMax(lbl){
+  const mx={};
+  for(const nm of [...FNAMES,'grad']) mx[nm]=1;
+  if(lbl==='A') fieldMaxA=mx; else fieldMaxB=mx;
+}
+
+// ── Efficiency factor ─────────────────────────────────────────
+// All active operations are scaled by local entropy.
+// At S=0: eff=1.0 (full capacity)
+// At S=18: eff≈0.37 (severely degraded)
+// At S=55: eff≈0.05 (floor, barely functional)
+//
+// This is the mechanism by which entropy feeds back into
+// production — the core coupling between disorder and output.
+function eff(s){ return Math.max(0.05, Math.exp(-0.055*s)); }
+
+// ── Build operator ────────────────────────────────────────────
+// Converts material + labor + energy → structure.
+// Entropy always increases (second law respected).
+// Efficiency degradation means building in a high-entropy
+// environment costs more entropy per unit of structure gained —
+// a self-reinforcing trap.
+function opBuild(f,i){
+  if(f.wood[i]>=2 && f.labor[i]>=0.8 && f.energy[i]>=0.8){
+    const e=eff(f.entropy[i]);
+    f.wood[i]-=2; f.labor[i]-=0.8; f.energy[i]-=0.8;
+    f.structure[i]+=1.6*e;
+    f.entropy[i]+=0.9/e;  // entropy cost rises as efficiency falls
+  }
+}
+
+// ── Recycle operator ──────────────────────────────────────────
+// Converts disordered material (scrap) back into structured
+// material (wood). This represents entropy management —
+// spending energy and labor to reverse local disorder.
+//
+// Crucially: entropy is NOT destroyed.
+// It is redistributed into the road network — pushed to
+// neighbors in proportion to road adjacency.
+//
+// This models:
+//   - heat dissipation through infrastructure
+//   - externalized costs to adjacent regions
+//   - pollution propagating along supply lines
+//
+// The practical consequence: recycling nodes surrounded by
+// isolated neighbors have nowhere to push entropy, making
+// recycling progressively less effective in dead-ends.
+function opRecycle(f,i,roads){
+  if(f.scrap[i]>=2 && f.energy[i]>=0.8 && f.labor[i]>=0.6){
+    const e=eff(f.entropy[i]);
+    f.scrap[i]-=2; f.wood[i]+=1.2*e;
+    f.energy[i]-=0.8; f.labor[i]-=0.6;
+    const d=0.3*e;          // entropy displaced from this cell
+    f.entropy[i]-=d;
+    const nbrs=[...roads[i]];
+    if(nbrs.length>0){
+      const share=d/nbrs.length;
+      for(const j of nbrs) f.entropy[j]+=share;  // conserved: total unchanged
+    }
+    // If isolated (no road neighbors), displacement is absorbed locally —
+    // recycling in isolation is self-limiting.
+  }
+}
+
+// ── Cook operator ─────────────────────────────────────────────
+// Improves food usability: raw food → higher-efficiency food.
+// Small entropy cost. Increases labor yield per food unit.
+// Under survival policy this is prioritized; the system
+// trades energy for more effective labor regeneration.
+function opCook(f,i){
+  if(f.food[i]>=1 && f.energy[i]>=0.5){
+    f.food[i]+=0.5; f.energy[i]-=0.5; f.entropy[i]+=0.35;
+  }
+}
+
+// ── Eat/rest operator ─────────────────────────────────────────
+// Converts food → labor. This is the only reliable labor source.
+// Efficiency scales with local entropy: a degraded environment
+// produces less labor per unit of food consumed.
+// Small entropy reduction: rest slightly restores local order.
+function opEatRest(f,i){
+  if(f.food[i]>=0.8){
+    const e=eff(f.entropy[i]);
+    f.food[i]-=0.8; f.labor[i]+=1.6*e; f.entropy[i]-=0.1;
+  }
+}
+
+// ── Transport operator ────────────────────────────────────────
+// Moves resources along a single road edge.
+//
+// Key constraints:
+//   - no global optimization: agents have only local knowledge
+//   - energy cost per movement (no free redistribution)
+//   - 8% loss per hop (transport is imperfect)
+//   - congestion cap: nodes handling >3 loads/tick are blocked
+//
+// This produces:
+//   - bottlenecks at high-degree road junctions
+//   - supply delays proportional to network distance
+//   - spatial inequality even from uniform initial conditions
+//   - emergent hoarding at road dead-ends
+function opTransport(f,src,dst,field,amt,traffic){
+  if(traffic[src]>3) return;  // congestion: node is saturated
+  if(f[field][src]>=amt && f.energy[src]>=0.25){
+    traffic[src]+=1;
+    f[field][src]-=amt;
+    f[field][dst]+=amt*0.92;   // 8% transport loss
+    f.energy[src]-=0.25;
+    f.entropy[src]+=0.15;      // movement generates local disorder
+  }
+}
+
+// ── Transport scheduler ───────────────────────────────────────
+// Determines which transport events to attempt this tick.
+//
+// Deliberately local and stochastic — not a global optimizer.
+// Each surplus cell picks ONE random road neighbor to offer
+// resources to, only if that neighbor is in deficit.
+//
+// This is what makes the transport "dumb" in the right way:
+// real supply chains don't have perfect information.
+// Emergent patterns (hoarding, shortages, gradients) require
+// this imperfection to form.
+function scheduleTransport(f,w,policy,traffic){
+  const sur={wood:4, scrap:3, food:3, energy:6};
+  const def={wood:1, scrap:1, food:1, energy:2};
+  // Policy affects which resources are prioritized for movement
+  const order = policy==='recycle_heavy' ? ['scrap','wood','food','energy'] :
+                policy==='survival'      ? ['food','energy','wood','scrap'] :
+                                           ['wood','food','scrap','energy'];
+  const res=[];
+  for(const field of order){
+    for(let i=0;i<w*w;i++){
+      if(f[field][i]>sur[field]){
+        const nbrs=[...roads[i]];
+        if(nbrs.length===0) continue;
+        // pick one neighbor at random — local, imperfect knowledge
+        const j=nbrs[Math.floor(Math.random()*nbrs.length)];
+        if(f[field][j]<def[field]){
+          res.push({src:i, dst:j, field, amt:0.5});
+        }
+      }
+    }
+  }
+  return res;
+}
+
+// ── Entropy diffusion ─────────────────────────────────────────
+// Entropy spreads spatially like heat — increasing global coupling.
+// High-entropy regions gradually contaminate their neighbors,
+// which is why localized collapse tends to propagate outward.
+// Boundary condition is wrap-around (toroidal lattice).
+function diffuseEntropy(f,w,h){
+  const src=f.entropy, dst=new Float32Array(w*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=y*w+x;
+    let s=src[i]*0.6;
+    for(const[dx,dy]of[[-1,0],[1,0],[0,-1],[0,1]]){
+      s+=src[((y+dy+h)%h)*w+((x+dx+w)%w)]*0.1;
+    }
+    dst[i]=Math.max(0,s);
+  }
+  f.entropy=dst;
+}
+
+// ── Labor diffusion ───────────────────────────────────────────
+// Labor spreads along road edges, modeling worker migration and
+// coordination along infrastructure. 85% stays in place; 5% per
+// neighbor flows outward. This allows:
+//   - labor to migrate toward food/structure concentrations
+//   - collapse to propagate (labor abandons dying regions)
+//   - spatial specialization to emerge over time
+function diffuseLabor(f,w){
+  const src=f.labor, dst=new Float32Array(w*w);
+  for(let i=0;i<w*w;i++){
+    let s=src[i]*0.85;
+    const nbrs=[...roads[i]];
+    if(nbrs.length>0){
+      for(const j of nbrs) s+=src[j]*0.05;
+    }
+    dst[i]=Math.max(0,s);
+  }
+  f.labor=dst;
+}
+
+// ── World step ────────────────────────────────────────────────
+// One full time evolution of the system.
+// Discrete approximation to a coupled scalar-field dynamical system:
+//
+//   Φᵢ(x, t+1) = Φᵢ(x, t) + ΔΦᵢ(local interactions, transport, diffusion)
+//
+// The key structural choice:
+//   "Passive" processes = background physics (always applied)
+//   "Active" processes  = constrained decisions (limited by action cap)
+//
+// This separation prevents unrealistic infinite local productivity.
+// A cell cannot simultaneously grow food, build, recycle, and rest.
+// It must prioritize — which is where policy bites.
+function stepWorld(world, policy, traffic){
+  const{f:fin,w,h}=world;
+
+  // Clone state — ensures synchronous updates with no in-place bias.
+  // All cells see t, not a mix of t and t+1.
+  const f={};
+  for(const nm of FNAMES) f[nm]=new Float32Array(fin[nm]);
+  const n=w*h;
+
+  for(let i=0;i<n;i++){
+
+    // ── ACTION CAP ────────────────────────────────────────────
+    // Each cell may perform at most MAX_ACT intentional operations
+    // per tick. Passive processes (food growth, energy regen,
+    // structure decay) are not capped — they are physics.
+    // Only active choices (build, recycle, cook, eat) consume budget.
+    //
+    // Without this, supercells form that are locally self-sufficient
+    // and the global field structure collapses into isolated loops.
+    let actions=0;
+    const MAX_ACT=2;
+    function canAct(){ if(actions>=MAX_ACT) return false; actions++; return true; }
+
+    // ── PASSIVE: food regeneration ────────────────────────────
+    // Logistic-like growth: rate slows near capacity (foodCap=8).
+    // Entropy acts as environmental degradation — suppressing growth.
+    // This ensures food is not infinite and collapses in ruined regions.
+    const foodCap=8;
+    const regen=0.04*(1 - f.food[i]/foodCap);
+    f.food[i] += regen * Math.max(0.2, 1 - f.entropy[i]/30);
+
+    // ── PASSIVE: ambient energy regeneration ──────────────────
+    // Models solar/passive energy sources. Slow, unconditional.
+    if(f.energy[i]<8) f.energy[i]+=0.04;
+
+    // ── PASSIVE: structure decay ──────────────────────────────
+    // Two regimes create a phase-transition-like threshold:
+    //   S < 5  → slow wear (linear degradation)
+    //   S > 5  → catastrophic collapse (quadratic with entropy)
+    //
+    // This is why high-entropy environments are not just inefficient
+    // but actively destructive. A collapsing region accelerates.
+    if(f.structure[i]>0){
+      f.structure[i] -= f.entropy[i]>5 ? 0.02*f.entropy[i] : 0.003*f.entropy[i];
+      if(f.structure[i]<0){
+        f.scrap[i]+=0.3;   // collapsed structure re-enters material cycle
+        f.structure[i]=0;
+      }
+    }
+
+    // ── PASSIVE: labor entropy decay ──────────────────────────
+    // Disorder degrades productive capacity over time.
+    // In degraded environments, labor cannot sustain itself even
+    // with adequate food — the environment itself is hostile.
+    if(f.labor[i]>0){ f.labor[i]-=0.004*f.entropy[i]; if(f.labor[i]<0) f.labor[i]=0; }
+
+    // ── SURVIVAL BASELINE: eat/rest ───────────────────────────
+    // Converting food → labor is the survival floor.
+    // It always takes priority as the first active action.
+    // Without it the labor field drains and everything stops.
+    if(f.food[i]>0.8 && f.labor[i]<10 && canAct()) opEatRest(f,i);
+
+    // ── POLICY-DRIVEN ACTIONS ─────────────────────────────────
+    // Policies do not force behavior — they bias probability.
+    // The difference between regimes is stochastic intensity,
+    // not deterministic override. This matters because:
+    //   - it avoids runaway stacking artifacts
+    //   - it produces realistic variance across runs
+    //   - it allows partial behavior under resource constraints
+
+    if(policy==='balanced'){
+      // Maintains all subsystems. No single loop dominates.
+      if(canAct() && f.labor[i]>1   && f.wood[i]>2  && Math.random()<0.50) opBuild(f,i);
+      if(canAct() && f.scrap[i]>2                    && Math.random()<0.50) opRecycle(f,i,roads);
+      if(canAct() && f.food[i]>2                     && Math.random()<0.40) opCook(f,i);
+
+    } else if(policy==='build_heavy'){
+      // Pushes structure growth at the cost of entropy accumulation.
+      // The trap: more building → more entropy → less efficient building.
+      if(canAct() && f.labor[i]>0.8 && f.wood[i]>1.5 && Math.random()<0.75) opBuild(f,i);
+      if(canAct() && f.scrap[i]>4                     && Math.random()<0.30) opRecycle(f,i,roads);
+
+    } else if(policy==='recycle_heavy'){
+      // Prioritizes material recovery and entropy redistribution.
+      // Slows entropy accumulation but produces less structure.
+      if(canAct() && f.scrap[i]>1                     && Math.random()<0.75) opRecycle(f,i,roads);
+      if(canAct() && f.labor[i]>1.5 && f.wood[i]>2   && Math.random()<0.35) opBuild(f,i);
+
+    } else if(policy==='survival'){
+      // Prioritizes food usability and labor regeneration.
+      // Minimal building — invests in biological continuity over infrastructure.
+      if(canAct() && f.food[i]>0.8                   && Math.random()<0.65) opCook(f,i);
+      if(canAct() && f.labor[i]>2   && f.wood[i]>2   && Math.random()<0.30) opBuild(f,i);
+      if(canAct() && f.scrap[i]>2                    && Math.random()<0.30) opRecycle(f,i,roads);
+    }
+  }
+
+  // ── NETWORK TRANSPORT ─────────────────────────────────────
+  // Resources move only along roads. Local, stochastic, congested.
+  // This runs after all local operations so cells act on t-state,
+  // not partially updated neighbors.
+  for(const t of scheduleTransport(f,w,policy,traffic)){
+    opTransport(f,t.src,t.dst,t.field,t.amt,traffic);
+  }
+
+  // ── DIFFUSION ─────────────────────────────────────────────
+  diffuseEntropy(f,w,h);   // entropy spreads like heat
+  diffuseLabor(f,w);       // labor migrates along infrastructure
+
+  return {f,w,h};
+}
+
+// ── Entropy gradient field ────────────────────────────────────
+// Computes a discrete approximation to |∇S| — the spatial gradient
+// magnitude of the entropy field.
+//
+// High values = entropy stress boundaries.
+// Low values  = uniform entropy regions (stable or uniformly degraded).
+//
+// This is where collapse fronts form, transport bottlenecks become
+// visible, and structure failure propagates. It is the most
+// spatially informative diagnostic in the system — more so than
+// raw entropy, which can look uniform even when structure is failing.
+function computeGrad(f,w,h){
+  const S=f.entropy, g=new Float32Array(w*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=y*w+x;
+    let sum=0, cnt=0;
+    for(const[dx,dy]of[[-1,0],[1,0],[0,-1],[0,1]]){
+      sum+=S[((y+dy+h)%h)*w+((x+dx+w)%w)]; cnt++;
+    }
+    g[i]=Math.abs(S[i]-sum/cnt);
+  }
+  return g;
+}
+
+// ── Viability functional ──────────────────────────────────────
+// A weighted sum of system capacities used as a scalar diagnostic.
+//
+// Positive contributors:
+//   structure (0.7) — physical capital, long-term stability
+//   labor    (1.5)  — productive potential, highest weight
+//   food     (0.6)  — biological sustainability
+//   energy   (0.3)  — process throughput, ambient baseline
+//
+// Negative contributor:
+//   entropy  (0.8)  — systemic disorder, friction, degradation
+//
+// ω < 0 means the system is consuming its own productive capacity.
+// It does not mean immediate collapse — but it means the direction
+// of travel is toward failure unless the entropy term is addressed.
+//
+// This is NOT a conserved quantity. It is a synthetic diagnostic
+// that encodes the hypothesis: viable systems must manage entropy,
+// not just accumulate resources.
+function via(f){
+  return 0.7*fsum(f.structure)
+       + 1.5*fsum(f.labor)
+       + 0.6*fsum(f.food)
+       + 0.3*fsum(f.energy)
+       - 0.8*fsum(f.entropy);
+}
+
+// ── History recording ─────────────────────────────────────────
+function fsum(a){ let s=0; for(let i=0;i<a.length;i++) s+=a[i]; return s; }
+
+function initHist(){
+  hist={};
+  for(const k of['structure','entropy','labor','material','viability'])
+    hist[k]={A:[],B:[]};
+}
+function rec(lbl,w){
+  const f=w.f;
+  hist.structure[lbl].push(fsum(f.structure));
+  hist.entropy[lbl].push(fsum(f.entropy));
+  hist.labor[lbl].push(fsum(f.labor));
+  hist.material[lbl].push(fsum(f.wood)+fsum(f.scrap));
+  hist.viability[lbl].push(via(f));
+  for(const k of Object.keys(hist))
+    if(hist[k][lbl].length>HMAX) hist[k][lbl].shift();
+}
+
+// ── Render: field heatmap ─────────────────────────────────────
+// Uses persistent maxima (fix 10) so color scale is anchored to
+// the historical high, not the current frame. Without this,
+// a collapsing field looks "full" as its scale compresses —
+// hiding the very information you need to see.
+function renderField(canvas, data, cd, persistMax, key){
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  const img=ctx.createImageData(W,H);
+  let mx=0; for(let i=0;i<data.length;i++) if(data[i]>mx) mx=data[i];
+  persistMax[key]=Math.max(persistMax[key]||1, mx);
+  mx=persistMax[key];
+  if(mx<0.001) mx=0.001;
+  for(let i=0;i<W*H;i++){
+    const t=Math.min(1,data[i]/mx);
+    img.data[i*4]  =cd[0][0]+t*(cd[1][0]-cd[0][0]);
+    img.data[i*4+1]=cd[0][1]+t*(cd[1][1]-cd[0][1]);
+    img.data[i*4+2]=cd[0][2]+t*(cd[1][2]-cd[0][2]);
+    img.data[i*4+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+
+function renderRoadOverlay(canvas){
+  const cw=canvas.offsetWidth||80, ch=canvas.offsetHeight||80;
+  canvas.width=cw; canvas.height=ch;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,cw,ch);
+  if(!showRoads||!roads) return;
+  ctx.strokeStyle='rgba(255,255,255,0.38)'; ctx.lineWidth=0.7;
+  const cW=cw/W, cH=ch/H;
+  for(let i=0;i<W*H;i++){
+    const x=i%W, y=Math.floor(i/W);
+    for(const j of roads[i]){
+      if(j>i){
+        const nx=j%W, ny=Math.floor(j/W);
+        ctx.beginPath();
+        ctx.moveTo((x+0.5)*cW,(y+0.5)*cH);
+        ctx.lineTo((nx+0.5)*cW,(ny+0.5)*cH);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+// ── Render: time series overlay ───────────────────────────────
+// Both A and B plotted on the same axis range derived from their
+// combined history. This makes divergence immediately legible —
+// you see exactly when the two regimes separate.
+function renderChart(canvas,dA,dB,lA,lB){
+  const CW=canvas.offsetWidth||220, CH=46;
+  canvas.width=CW; canvas.height=CH;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#08080a'; ctx.fillRect(0,0,CW,CH);
+  const all=[...dA,...dB];
+  if(all.length<2){ if(lA)lA.textContent='—'; if(lB)lB.textContent='—'; return; }
+  let mn=Infinity,mx=-Infinity;
+  for(const v of all){ if(v<mn)mn=v; if(v>mx)mx=v; }
+  if(mx-mn<0.01){ mn-=1; mx+=1; }
+  if(mn<0){
+    const zy=CH-((0-mn)/(mx-mn))*CH;
+    ctx.strokeStyle='#252530'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,zy); ctx.lineTo(CW,zy); ctx.stroke();
+  }
+  function line(data,color){
+    if(data.length<2) return;
+    ctx.beginPath();
+    for(let i=0;i<data.length;i++){
+      const px=(i/(data.length-1))*CW;
+      const py=CH-((data[i]-mn)/(mx-mn))*(CH-4)-2;
+      i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    }
+    ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.stroke();
+  }
+  line(dA,'#6fff50'); line(dB,'#ff44cc');
+  if(lA&&dA.length) lA.textContent=dA[dA.length-1].toFixed(1);
+  if(lB&&dB.length) lB.textContent=dB[dB.length-1].toFixed(1);
+}
+
+// ── Build DOM ─────────────────────────────────────────────────
+const CDEFS=[
+  {key:'structure', label:'STRUCTURE Φ₆'},
+  {key:'entropy',   label:'ENTROPY S'},
+  {key:'labor',     label:'LABOR Φ₅'},
+  {key:'material',  label:'MATERIAL CYCLE'},
+  {key:'viability', label:'VIABILITY ω'},
+];
+
+function buildCharts(){
+  const wrap=document.getElementById('charts-wrap');
+  wrap.innerHTML='<h2>// DYNAMICS A vs B</h2>';
+  for(const{key,label}of CDEFS){
+    const d=document.createElement('div');
+    d.className='chart-block';
+    d.innerHTML=`
+      <div class="chart-lbl">
+        <span>${label}</span>
+        <span class="cvs">
+          <span class="cv A" id="cv-${key}-A">—</span>
+          <span style="color:var(--dim)">/</span>
+          <span class="cv B" id="cv-${key}-B">—</span>
+        </span>
+      </div>
+      <canvas class="chart" id="ch-${key}" height="46"></canvas>`;
+    wrap.appendChild(d);
+  }
+}
+
+function viewFields(){
+  const v=document.getElementById('field-sel').value;
+  if(v==='all') return FNAMES;
+  if(v==='grad') return ['grad'];
+  return [v];
+}
+
+function buildGrid(lbl){
+  const grid=document.getElementById(`grid${lbl}`);
+  grid.innerHTML='';
+  const fields=viewFields();
+  grid.style.gridTemplateColumns=fields.length>1?'repeat(4,1fr)':'1fr';
+  for(const nm of fields){
+    const fp=document.createElement('div');
+    fp.className='fp'; fp.id=`fp-${lbl}-${nm}`;
+    fp.innerHTML=`
+      <div class="fl">
+        <span style="color:${FCOLCSS[nm]}">${FLABELS[nm]||nm}</span>
+        <span class="ft" id="ft-${lbl}-${nm}" style="color:${FCOLCSS[nm]}">—</span>
+      </div>
+      <div class="cw">
+        <canvas class="fc" id="fc-${lbl}-${nm}" width="${W}" height="${H}"></canvas>
+        <canvas class="ro" id="ro-${lbl}-${nm}"></canvas>
+      </div>`;
+    grid.appendChild(fp);
+  }
+}
+
+function renderGrids(lbl, world, persistMax){
+  const fields=viewFields();
+  for(const nm of fields){
+    const fc=document.getElementById(`fc-${lbl}-${nm}`);
+    const ro=document.getElementById(`ro-${lbl}-${nm}`);
+    if(!fc) continue;
+    const data = nm==='grad' ? computeGrad(world.f,W,H) : world.f[nm];
+    renderField(fc, data, FCOLORS[nm]||FCOLORS.entropy, persistMax, nm);
+    if(ro) renderRoadOverlay(ro);
+    const ft=document.getElementById(`ft-${lbl}-${nm}`);
+    if(ft){
+      let s=0; for(let i=0;i<data.length;i++) s+=data[i];
+      ft.textContent=s.toFixed(0);
+    }
+  }
+}
+
+function renderCharts(){
+  for(const{key}of CDEFS){
+    const c=document.getElementById(`ch-${key}`);
+    const lA=document.getElementById(`cv-${key}-A`);
+    const lB=document.getElementById(`cv-${key}-B`);
+    if(c) renderChart(c,hist[key].A,hist[key].B,lA,lB);
+  }
+}
+
+function renderViability(){
+  const vA=hist.viability.A, vB=hist.viability.B;
+  const va=vA.length?vA[vA.length-1]:0;
+  const vb=vB.length?vB[vB.length-1]:0;
+  const eA=document.getElementById('via-A'), eB=document.getElementById('via-B');
+  if(eA){ eA.textContent=va.toFixed(1); eA.style.color=va>0?'var(--A)':'var(--red)'; }
+  if(eB){ eB.textContent=vb.toFixed(1); eB.style.color=vb>0?'var(--B)':'var(--red)'; }
+}
+
+// ── Event log ─────────────────────────────────────────────────
+// Logs qualitative state transitions, not every tick.
+// Alerts fire when system crosses meaningful thresholds:
+//   labor collapse, food crisis, entropy divergence between A and B.
+let lastLog=-15;
+function checkLog(){
+  if(stepCount-lastLog<15) return; lastLog=stepCount;
+  const fa=worldA.f, fb=worldB.f;
+  const eA=fsum(fa.entropy), eB=fsum(fb.entropy);
+  if(fsum(fa.labor)<5)   addLog('A LABOR COLLAPSE','lc');
+  if(fsum(fb.labor)<5)   addLog('B LABOR COLLAPSE','lc');
+  if(fsum(fa.food)<10)   addLog('A FOOD CRITICAL','lw');
+  if(fsum(fb.food)<10)   addLog('B FOOD CRITICAL','lw');
+  if(eA>eB*1.5)          addLog(`A entropy >> B  Δ=${(eA-eB).toFixed(0)}`,'lw');
+  if(eB>eA*1.5)          addLog(`B entropy >> A  Δ=${(eB-eA).toFixed(0)}`,'lw');
+  addLog(`T=${stepCount}  A:ω=${via(fa).toFixed(0)}  B:ω=${via(fb).toFixed(0)}`,'');
+}
+function addLog(msg,cls){
+  const el=document.getElementById('log');
+  const d=document.createElement('div');
+  if(cls) d.className=cls;
+  d.textContent='> '+msg;
+  el.insertBefore(d,el.firstChild);
+  while(el.children.length>28) el.removeChild(el.lastChild);
+}
+
+// ── Main tick ─────────────────────────────────────────────────
+function tick(){
+  // Reset traffic arrays each tick — congestion is instantaneous,
+  // not accumulated. This prevents permanent gridlock from forming.
+  const trafficA=new Float32Array(W*H);
+  const trafficB=new Float32Array(W*H);
+  worldA=stepWorld(worldA, document.getElementById('pol-A').value, trafficA);
+  worldB=stepWorld(worldB, document.getElementById('pol-B').value, trafficB);
+  stepCount++;
+  rec('A',worldA); rec('B',worldB);
+  document.getElementById('sn').textContent=String(stepCount).padStart(4,'0');
+  renderGrids('A',worldA,fieldMaxA);
+  renderGrids('B',worldB,fieldMaxB);
+  renderCharts(); renderViability(); checkLog();
+}
+
+// ── Initialization ────────────────────────────────────────────
+function init(){
+  W=parseInt(document.getElementById('sz').value); H=W;
+  roads=buildRoads(W,H);
+  const seed=makeWorld(W,H);
+  worldA=clone(seed); worldB=clone(seed);  // identical initial conditions
+  stepCount=0;
+  initHist();
+  initFieldMax('A'); initFieldMax('B');
+  buildCharts(); buildGrid('A'); buildGrid('B');
+  renderGrids('A',worldA,fieldMaxA);
+  renderGrids('B',worldB,fieldMaxB);
+  const pA=document.getElementById('pol-A');
+  const pB=document.getElementById('pol-B');
+  document.getElementById('lbl-A').textContent=pA.options[pA.selectedIndex].text;
+  document.getElementById('lbl-B').textContent=pB.options[pB.selectedIndex].text;
+  let ec=0; for(const s of roads) ec+=s.size;
+  addLog(`INIT ${W}×${H} · ${ec/2|0} ROAD EDGES · MAX_ACT=2`,'');
+}
+
+// ── Controls ──────────────────────────────────────────────────
+const playBtn=document.getElementById('btn-play');
+playBtn.addEventListener('click',()=>{
+  running=!running;
+  if(running){
+    playBtn.textContent='⏸ PAUSE'; playBtn.classList.add('active');
+    iid=setInterval(tick,parseInt(document.getElementById('spd').value));
+  } else {
+    playBtn.textContent='▶ RUN'; playBtn.classList.remove('active');
+    clearInterval(iid);
+  }
+});
+document.getElementById('btn-step').addEventListener('click',()=>{ if(!running) tick(); });
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  running=false; clearInterval(iid);
+  playBtn.textContent='▶ RUN'; playBtn.classList.remove('active');
+  init();
+});
+document.getElementById('spd').addEventListener('change',()=>{
+  if(running){ clearInterval(iid); iid=setInterval(tick,parseInt(document.getElementById('spd').value)); }
+});
+document.getElementById('sz').addEventListener('change',()=>{
+  running=false; clearInterval(iid);
+  playBtn.textContent='▶ RUN'; playBtn.classList.remove('active');
+  init();
+});
+document.getElementById('field-sel').addEventListener('change',()=>{
+  buildGrid('A'); buildGrid('B');
+  renderGrids('A',worldA,fieldMaxA);
+  renderGrids('B',worldB,fieldMaxB);
+});
+document.getElementById('btn-roads').addEventListener('click',function(){
+  showRoads=!showRoads;
+  this.textContent=showRoads?'HIDE ROADS':'SHOW ROADS';
+  this.classList.toggle('active',showRoads);
+  renderGrids('A',worldA,fieldMaxA);
+  renderGrids('B',worldB,fieldMaxB);
+});
+document.getElementById('pol-A').addEventListener('change',function(){
+  document.getElementById('lbl-A').textContent=this.options[this.selectedIndex].text;
+  addLog('A → '+this.options[this.selectedIndex].text,'');
+});
+document.getElementById('pol-B').addEventListener('change',function(){
+  document.getElementById('lbl-B').textContent=this.options[this.selectedIndex].text;
+  addLog('B → '+this.options[this.selectedIndex].text,'');
+});
+
+init();
+</script>
+</body>
+</html>
