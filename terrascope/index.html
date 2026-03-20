@@ -1,0 +1,906 @@
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RSVP TerraScope — Speculative Deep-Time Biosphere Simulator</title>
+<style>
+  :root{
+    --bg:#020703;
+    --bg2:#07120a;
+    --grid:#10361c;
+    --line:#66ff99;
+    --line-dim:#2f7f4c;
+    --brite:#b8ffd1;
+    --warn:#d3ff7a;
+    --shadow:#0b2a16;
+  }*{ box-sizing:border-box; } html,body{ margin:0; width:100%; height:100%; overflow:hidden; background:radial-gradient(circle at 50% 40%, #07150c 0%, #030804 45%, #010301 100%); color:var(--line); font-family: "Courier New", Consolas, monospace; }
+
+#app{ position:relative; width:100%; height:100%; background: radial-gradient(circle at 50% 50%, rgba(30,110,60,0.08), transparent 35%), linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.4)); }
+
+canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; image-rendering:pixelated; }
+
+#hud{ position:absolute; left:16px; top:16px; width:min(430px, calc(100vw - 32px)); padding:14px 14px 12px; border:1px solid var(--line-dim); background:rgba(0,10,0,0.68); box-shadow:0 0 0 1px rgba(130,255,170,0.05) inset, 0 0 30px rgba(80,255,120,0.07); backdrop-filter: blur(2px); }
+
+#hud.hidden{ display:none; }
+
+.title{ font-size:18px; letter-spacing:2px; color:var(--brite); margin-bottom:4px; text-shadow:0 0 8px rgba(160,255,190,0.25); }
+
+.subtitle{ font-size:11px; line-height:1.35; color:var(--line); opacity:0.9; margin-bottom:10px; }
+
+.row{ display:flex; gap:8px; align-items:center; margin:8px 0; flex-wrap:wrap; }
+
+button, select, input[type="range"]{ accent-color: var(--line); }
+
+button, select{ background:#031008; color:var(--line); border:1px solid var(--line-dim); font:inherit; padding:6px 8px; cursor:pointer; box-shadow:0 0 10px rgba(90,255,120,0.08) inset; }
+
+button:hover, select:hover{ border-color:var(--line); color:var(--brite); }
+
+input[type="range"]{ width:100%; background:transparent; }
+
+.stack{ display:grid; gap:5px; } .small{ font-size:11px; opacity:0.92; } .tiny{ font-size:10px; opacity:0.8; } .value{ color:var(--brite); font-weight:bold; }
+
+.meter-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px; }
+
+.meter{ border:1px solid var(--line-dim); padding:6px; background:rgba(5,20,9,0.5); }
+
+.bar{ height:10px; border:1px solid var(--line-dim); margin-top:4px; position:relative; overflow:hidden; background:#021007; }
+
+.fill{ position:absolute; left:0; top:0; bottom:0; width:50%; background:linear-gradient(90deg, rgba(80,255,130,0.2), rgba(140,255,180,0.8)); box-shadow:0 0 10px rgba(100,255,160,0.3); }
+
+#readout{ position:absolute; right:16px; top:16px; padding:10px 12px; border:1px solid var(--line-dim); background:rgba(0,10,0,0.65); width:min(340px, calc(100vw - 32px)); text-align:right; }
+
+#legend{ position:absolute; right:16px; bottom:16px; padding:10px 12px; border:1px solid var(--line-dim); background:rgba(0,10,0,0.65); width:min(340px, calc(100vw - 32px)); }
+
+.legend-line{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11px; margin:5px 0; }
+
+.swatch{ width:30px; height:10px; border:1px solid var(--line-dim); background:#0f0; box-shadow:0 0 8px rgba(120,255,150,0.18); }
+
+#help{ position:absolute; left:16px; bottom:16px; max-width:430px; padding:8px 10px; font-size:11px; border:1px solid var(--line-dim); background:rgba(0,10,0,0.55); opacity:0.9; }
+
+.scanlines, .vignette, .noise{ position:absolute; inset:0; pointer-events:none; }
+
+.scanlines{ background:repeating-linear-gradient( to bottom, rgba(160,255,190,0.04) 0px, rgba(160,255,190,0.04) 1px, transparent 2px, transparent 4px ); mix-blend-mode:screen; opacity:0.5; }
+
+.vignette{ box-shadow: inset 0 0 140px rgba(0,0,0,0.7), inset 0 0 40px rgba(60,255,110,0.08); }
+
+.noise{ opacity:0.06; background-image: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.7) 0 0.6px, transparent 0.7px), radial-gradient(circle at 60% 50%, rgba(255,255,255,0.8) 0 0.6px, transparent 0.7px), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.5) 0 0.6px, transparent 0.7px), radial-gradient(circle at 40% 80%, rgba(255,255,255,0.6) 0 0.6px, transparent 0.7px); background-size: 190px 150px, 230px 210px, 270px 190px, 150px 180px; animation: driftNoise 8s linear infinite; }
+
+@keyframes driftNoise{ from{ transform:translate(0,0); } to{ transform:translate(-12px,8px); } }
+
+@media (max-width: 900px){
+  #readout, #legend{ width:min(290px, calc(100vw - 32px)); }
+  #legend{ bottom:110px; }
+  #help{ right:16px; left:auto; width:min(290px, calc(100vw - 32px)); }
+  /* On mobile, hide HUD and overlays by default so globe is unobstructed */
+  #hud{ display:none; }
+  #readout{ display:none; }
+  #legend{ display:none; }
+  #help{ display:none; }
+}
+
+/* Always-visible tap target to toggle UI on mobile */
+#ui-toggle{
+  display:none;
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  z-index:200;
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  background:rgba(0,20,8,0.85);
+  border:1px solid #2f7f4c;
+  color:#66ff99;
+  font-family:"Courier New",monospace;
+  font-size:20px;
+  cursor:pointer;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 0 16px rgba(80,255,120,0.18);
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+@media (max-width: 900px){
+  #ui-toggle{ display:flex; }
+}
+/* When UI is toggled visible on mobile */
+body.ui-visible #hud,
+body.ui-visible #readout,
+body.ui-visible #legend,
+body.ui-visible #help{
+  display:block;
+}
+</style>
+
+</head>
+<body>
+<div id="app">
+  <canvas id="view"></canvas>
+
+  <!-- Mobile UI toggle — always visible, tapping shows/hides all panels -->
+  <button id="ui-toggle" aria-label="Toggle UI">☰</button>
+
+  <div id="hud">
+    <div class="title">RSVP TERRASCOPE</div>
+    <div class="subtitle">Speculative deep-time vector monitor. Continental drift, rainforest spread, and giant kelp emergence rendered as an interactive toy model from Pangea to the present.</div><div class="stack small">
+  <div>Era: <span class="value" id="eraLabel">240 Ma</span></div>
+  <input id="timeSlider" type="range" min="0" max="240" step="1" value="240" />
+</div>
+
+<div class="row">
+  <button id="playBtn">PLAY</button>
+  <button id="reverseBtn">REVERSE</button>
+  <button id="pauseBtn">PAUSE</button>
+  <button id="presentBtn">PRESENT DAY</button>
+  <button id="pangeaBtn">PANGEA</button>
+</div>
+
+<div class="row small">
+  <label for="speedSelect">Anim speed</label>
+  <select id="speedSelect">
+    <option value="0.2">0.2×</option>
+    <option value="0.5">0.5×</option>
+    <option value="1" selected>1×</option>
+    <option value="2">2×</option>
+    <option value="4">4×</option>
+    <option value="8">8×</option>
+  </select>
+  <button id="toggleAutoSpin">AUTO-SPIN: ON</button>
+  <button id="toggleHud">HIDE HUD</button>
+</div>
+
+<div class="meter-grid small">
+  <div class="meter">
+    <div>Rainforest penetration</div>
+    <div class="bar"><div class="fill" id="rainBar"></div></div>
+  </div>
+  <div class="meter">
+    <div>Giant kelp extent</div>
+    <div class="bar"><div class="fill" id="kelpBar"></div></div>
+  </div>
+  <div class="meter">
+    <div>Biomass complexity</div>
+    <div class="bar"><div class="fill" id="bioBar"></div></div>
+  </div>
+  <div class="meter">
+    <div>Continental divergence</div>
+    <div class="bar"><div class="fill" id="driftBar"></div></div>
+  </div>
+</div>
+
+<div class="tiny" style="margin-top:10px;">
+  This is a stylized exploratory simulator rather than a geologically precise reconstruction. Use it as a visual thinking surface for speculative planetary narratives.
+</div>
+
+  </div>  <div id="readout" class="small">
+    <div>VIEWPORT LONGITUDE <span class="value" id="lonRead">0°</span></div>
+    <div>VIEWPORT LATITUDE <span class="value" id="latRead">0°</span></div>
+    <div>ZOOM FACTOR <span class="value" id="zoomRead">1.00×</span></div>
+    <div>ROTATION MODE <span class="value" id="modeRead">AUTO</span></div>
+  </div>  <div id="legend" class="small">
+    <div class="legend-line"><span>Continental wireframe</span><span class="swatch" style="background:#6bff9f"></span></div>
+    <div class="legend-line"><span>Rainforest massing</span><span class="swatch" style="background:#98ffc0"></span></div>
+    <div class="legend-line"><span>Kelp belts / coastal blooms</span><span class="swatch" style="background:#d6ff8f"></span></div>
+    <div class="legend-line"><span>Subduction / fracture hints</span><span class="swatch" style="background:#37a95e"></span></div>
+  </div>  <div id="help">
+    Drag to orbit. Mouse wheel to zoom. Double-click toggles auto-spin. Space pauses or resumes. H hides the panel. The time slider moves from 240 million years ago to the present.
+  </div>  <div class="noise"></div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+</div><script>
+(() => {
+  const canvas = document.getElementById('view');
+  const ctx = canvas.getContext('2d');
+
+  const hud = document.getElementById('hud');
+  const timeSlider = document.getElementById('timeSlider');
+  const eraLabel = document.getElementById('eraLabel');
+  const rainBar = document.getElementById('rainBar');
+  const kelpBar = document.getElementById('kelpBar');
+  const bioBar = document.getElementById('bioBar');
+  const driftBar = document.getElementById('driftBar');
+  const lonRead = document.getElementById('lonRead');
+  const latRead = document.getElementById('latRead');
+  const zoomRead = document.getElementById('zoomRead');
+  const modeRead = document.getElementById('modeRead');
+
+  const DEG = Math.PI / 180;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = t => t * t * (3 - 2 * t);
+  const smoother = t => t * t * t * (t * (t * 6 - 15) + 10);
+  const fract = x => x - Math.floor(x);
+  const mix = lerp;
+
+  function hash2(x, y){
+    return fract(Math.sin(x * 127.1 + y * 311.7) * 43758.5453123);
+  }
+
+  function valueNoise2(x, y){
+    const x0 = Math.floor(x), y0 = Math.floor(y);
+    const x1 = x0 + 1, y1 = y0 + 1;
+    const sx = smoother(fract(x));
+    const sy = smoother(fract(y));
+    const n00 = hash2(x0, y0);
+    const n10 = hash2(x1, y0);
+    const n01 = hash2(x0, y1);
+    const n11 = hash2(x1, y1);
+    const ix0 = mix(n00, n10, sx);
+    const ix1 = mix(n01, n11, sx);
+    return mix(ix0, ix1, sy);
+  }
+
+  function fbm(x, y, oct=4){
+    let sum = 0, amp = 0.5, freq = 1;
+    for(let i=0;i<oct;i++){
+      sum += amp * valueNoise2(x * freq, y * freq);
+      freq *= 2;
+      amp *= 0.5;
+    }
+    return sum;
+  }
+
+  function easeEra(ma){
+    return 1 - clamp(ma / 240, 0, 1);
+  }
+
+  const continents = [
+    {
+      key:'northAmerica',
+      name:'North America',
+      present:{lat:42, lon:-102, rot:10},
+      pangea:{lat:8, lon:-18, rot:-12},
+      shape:[[-24,18],[-16,28],[-8,33],[5,31],[18,25],[20,15],[14,7],[10,0],[5,-10],[-3,-18],[-10,-25],[-15,-22],[-20,-10],[-25,2]]
+    },
+    {
+      key:'southAmerica',
+      name:'South America',
+      present:{lat:-18, lon:-60, rot:20},
+      pangea:{lat:-8, lon:0, rot:10},
+      shape:[[-8,24],[0,20],[8,10],[10,0],[8,-12],[2,-24],[-2,-38],[-8,-50],[-14,-40],[-16,-24],[-15,-8],[-12,8]]
+    },
+    {
+      key:'africa',
+      name:'Africa',
+      present:{lat:5, lon:20, rot:-5},
+      pangea:{lat:0, lon:15, rot:0},
+      shape:[[-14,26],[-3,32],[8,29],[14,18],[16,4],[13,-12],[8,-25],[-2,-33],[-10,-28],[-14,-12],[-18,2],[-16,18]]
+    },
+    {
+      key:'eurasia',
+      name:'Eurasia',
+      present:{lat:47, lon:72, rot:-8},
+      pangea:{lat:18, lon:28, rot:-10},
+      shape:[[-42,12],[-30,20],[-18,25],[-5,28],[10,25],[24,20],[40,16],[46,8],[38,2],[26,0],[18,-5],[8,-2],[-2,-6],[-12,-4],[-24,-8],[-36,-4],[-44,4]]
+    },
+    {
+      key:'india',
+      name:'India',
+      present:{lat:21, lon:79, rot:12},
+      pangea:{lat:-18, lon:40, rot:-5},
+      shape:[[-8,12],[2,14],[8,8],[10,-2],[6,-10],[-2,-16],[-10,-8],[-10,2]]
+    },
+    {
+      key:'australia',
+      name:'Australia',
+      present:{lat:-25, lon:134, rot:8},
+      pangea:{lat:-28, lon:55, rot:18},
+      shape:[[-18,8],[-8,14],[6,13],[18,6],[20,-4],[12,-12],[-2,-14],[-16,-8],[-20,0]]
+    },
+    {
+      key:'antarctica',
+      name:'Antarctica',
+      present:{lat:-78, lon:20, rot:0},
+      pangea:{lat:-42, lon:22, rot:0},
+      shape:[[-42,8],[-26,14],[-8,16],[10,15],[28,10],[42,4],[34,-6],[18,-10],[-6,-12],[-26,-10],[-40,-2]]
+    },
+    {
+      key:'greenland',
+      name:'Greenland',
+      present:{lat:72, lon:-42, rot:18},
+      pangea:{lat:22, lon:-8, rot:5},
+      shape:[[-8,16],[0,20],[8,16],[12,6],[8,-10],[0,-18],[-8,-10],[-12,2]]
+    }
+  ];
+
+  const state = {
+    w: 0,
+    h: 0,
+    dpr: Math.min(window.devicePixelRatio || 1, 2),
+    ma: 240,
+    playing: true,
+    direction: -1,
+    speed: 1,
+    autoSpin: true,
+    yaw: 0,
+    pitch: 0.1,
+    zoom: 1,
+    dragging: false,
+    lastX: 0,
+    lastY: 0,
+    time: 0,
+    glitch: 0,
+  };
+
+  function resize(){
+    state.w = window.innerWidth;
+    state.h = window.innerHeight;
+    canvas.width = Math.floor(state.w * state.dpr);
+    canvas.height = Math.floor(state.h * state.dpr);
+    canvas.style.width = state.w + 'px';
+    canvas.style.height = state.h + 'px';
+    ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+  }
+
+  function latLonToVec(lat, lon){
+    const la = lat * DEG;
+    const lo = lon * DEG;
+    return {
+      x: Math.cos(la) * Math.cos(lo),
+      y: Math.sin(la),
+      z: Math.cos(la) * Math.sin(lo)
+    };
+  }
+
+  function rotY(v, a){
+    const c = Math.cos(a), s = Math.sin(a);
+    return { x:v.x*c + v.z*s, y:v.y, z:-v.x*s + v.z*c };
+  }
+
+  function rotX(v, a){
+    const c = Math.cos(a), s = Math.sin(a);
+    return { x:v.x, y:v.y*c - v.z*s, z:v.y*s + v.z*c };
+  }
+
+  function project(v, radius, cx, cy){
+    let p = rotY(v, state.yaw);
+    p = rotX(p, state.pitch);
+    const visible = p.z > -0.15;
+    const scale = 0.84 + (p.z + 1) * 0.16;
+    return {
+      x: cx + p.x * radius * scale,
+      y: cy - p.y * radius * scale,
+      z: p.z,
+      visible
+    };
+  }
+
+  function transformPoint(continent, point, ma){
+    const t = easeEra(ma);
+    const driftCurve = smooth(t);
+    const centerLat = lerp(continent.pangea.lat, continent.present.lat, driftCurve);
+    const centerLon = lerp(continent.pangea.lon, continent.present.lon, driftCurve);
+    const rot = lerp(continent.pangea.rot, continent.present.rot, driftCurve) * DEG;
+
+    const x = point[0], y = point[1];
+    const rx = x * Math.cos(rot) - y * Math.sin(rot);
+    const ry = x * Math.sin(rot) + y * Math.cos(rot);
+
+    const lat = centerLat + ry * 0.55;
+    const lon = centerLon + rx * 0.9 / Math.max(0.2, Math.cos(centerLat * DEG));
+    return { lat, lon };
+  }
+
+  function getEarthMetrics(ma){
+    const t = easeEra(ma);
+    const rainforest = clamp(
+      0.22 + 0.58 * Math.sin((1 - ma / 240) * Math.PI * 0.78) + 0.12 * Math.sin((240 - ma) * 0.06),
+      0.06,
+      0.98
+    );
+    const kelp = clamp(
+      smooth(clamp((65 - ma) / 65, 0, 1)) * 0.9 + smooth(clamp((25 - ma) / 25, 0, 1)) * 0.1,
+      0,
+      1
+    );
+    const complexity = clamp(
+      0.18 + smooth(t) * 0.72 + 0.06 * Math.sin(ma * 0.08),
+      0.05,
+      1
+    );
+    const drift = clamp(smooth(t), 0, 1);
+    return { rainforest, kelp, complexity, drift };
+  }
+
+  function updateUi(){
+    const rounded = Math.round(state.ma);
+    eraLabel.textContent = `${rounded} Ma`;
+    timeSlider.value = rounded;
+    const m = getEarthMetrics(state.ma);
+    rainBar.style.width = (m.rainforest * 100).toFixed(1) + '%';
+    kelpBar.style.width = (m.kelp * 100).toFixed(1) + '%';
+    bioBar.style.width = (m.complexity * 100).toFixed(1) + '%';
+    driftBar.style.width = (m.drift * 100).toFixed(1) + '%';
+    lonRead.textContent = `${Math.round((-state.yaw / DEG) % 360)}°`;
+    latRead.textContent = `${Math.round(state.pitch / DEG)}°`;
+    zoomRead.textContent = `${state.zoom.toFixed(2)}×`;
+    modeRead.textContent = state.autoSpin ? 'AUTO' : 'MANUAL';
+  }
+
+  function drawBackgroundGrid(cx, cy, radius){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(75,255,120,0.12)';
+    ctx.lineWidth = 1;
+
+    for(let lat=-60; lat<=60; lat+=30){
+      let first = true;
+      ctx.beginPath();
+      for(let lon=-180; lon<=180; lon+=6){
+        const p = project(latLonToVec(lat, lon), radius, cx, cy);
+        if(p.z <= 0){
+          first = true;
+          continue;
+        }
+        if(first){ ctx.moveTo(p.x, p.y); first = false; }
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    }
+
+    for(let lon=-150; lon<=180; lon+=30){
+      let first = true;
+      ctx.beginPath();
+      for(let lat=-88; lat<=88; lat+=4){
+        const p = project(latLonToVec(lat, lon), radius, cx, cy);
+        if(p.z <= 0){
+          first = true;
+          continue;
+        }
+        if(first){ ctx.moveTo(p.x, p.y); first = false; }
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawStars(){
+    const n = Math.floor((state.w * state.h) / 18000);
+    ctx.save();
+    for(let i=0;i<n;i++){
+      const x = fract(Math.sin(i*91.7+1.1) * 43758.54) * state.w;
+      const y = fract(Math.sin(i*57.3+2.9 + state.time*0.00003) * 21781.13) * state.h;
+      const z = 0.4 + fract(Math.sin(i*12.9+0.7) * 9182.33) * 0.6;
+      const dx = (state.yaw * 18 * z) % state.w;
+      const dy = (state.pitch * 22 * z) % state.h;
+      const sx = (x + dx + state.w) % state.w;
+      const sy = (y + dy + state.h) % state.h;
+      const a = 0.18 + z * 0.35;
+      ctx.fillStyle = `rgba(130,255,170,${a})`;
+      ctx.fillRect(sx, sy, z > 0.8 ? 2 : 1, z > 0.92 ? 2 : 1);
+    }
+    ctx.restore();
+  }
+
+  function drawSphereGlow(cx, cy, radius){
+    const g = ctx.createRadialGradient(cx, cy, radius*0.5, cx, cy, radius*1.45);
+    g.addColorStop(0, 'rgba(70,255,120,0.06)');
+    g.addColorStop(0.55, 'rgba(30,160,70,0.08)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius*1.5, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawSphere(cx, cy, radius){
+    ctx.save();
+    const g = ctx.createRadialGradient(cx - radius*0.2, cy - radius*0.2, radius*0.15, cx, cy, radius);
+    g.addColorStop(0, 'rgba(20,80,40,0.45)');
+    g.addColorStop(0.6, 'rgba(5,25,12,0.94)');
+    g.addColorStop(1, 'rgba(0,0,0,0.98)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(130,255,170,0.35)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawContinent(continent, cx, cy, radius, ma){
+    const pts = continent.shape.map(pt => transformPoint(continent, pt, ma));
+    const projected = pts.map(p => project(latLonToVec(p.lat, p.lon), radius, cx, cy));
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(110,255,155,0.88)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    let started = false;
+    for(let i=0;i<projected.length;i++){
+      const p = projected[i];
+      if(p.z <= 0){
+        started = false;
+        continue;
+      }
+      if(!started){ ctx.moveTo(p.x, p.y); started = true; }
+      else ctx.lineTo(p.x, p.y);
+    }
+    if(started) ctx.closePath();
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = 'rgba(70,255,120,0.15)';
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(55,180,95,0.35)';
+    ctx.lineWidth = 1;
+    for(let i=0;i<pts.length;i++){
+      const a = pts[i];
+      const b = pts[(i+2)%pts.length];
+      const pa = project(latLonToVec(a.lat, a.lon), radius, cx, cy);
+      const pb = project(latLonToVec(b.lat, b.lon), radius, cx, cy);
+      if(pa.z > 0 && pb.z > 0){
+        ctx.beginPath();
+        ctx.moveTo(pa.x, pa.y);
+        ctx.lineTo(pb.x, pb.y);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawRainforestField(cx, cy, radius, ma){
+    const {rainforest} = getEarthMetrics(ma);
+    const density = Math.floor(120 + rainforest * 220);
+    ctx.save();
+    for(let i=0;i<density;i++){
+      const seed = i * 1.73;
+      const latBand = 28 + rainforest * 18;
+      const lat = (hash2(seed, 7.1) * 2 - 1) * latBand + Math.sin(i*0.23 + state.time*0.00015) * 3;
+      const lon = hash2(seed, 19.7) * 360 - 180 + state.time*0.0008;
+      const noise = fbm(lon*0.03 + ma*0.02, lat*0.05 + 10, 3);
+      if(noise < 0.42 - rainforest * 0.18) continue;
+      const p = project(latLonToVec(lat, lon), radius, cx, cy);
+      if(p.z <= 0) continue;
+      const size = 0.8 + rainforest * 1.8 + noise * 1.3;
+      ctx.strokeStyle = `rgba(150,255,200,${0.08 + 0.18*rainforest})`;
+      ctx.beginPath();
+      ctx.moveTo(p.x - size, p.y);
+      ctx.lineTo(p.x + size, p.y);
+      ctx.moveTo(p.x, p.y - size);
+      ctx.lineTo(p.x, p.y + size);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function kelpCoastSeeds(ma){
+    const base = [];
+    const t = easeEra(ma);
+    const active = clamp((70 - ma) / 70, 0, 1);
+    const westAmericas = Math.floor(30 + active * 65);
+    const southPacific = Math.floor(10 + active * 26);
+    const austral = Math.floor(8 + active * 18);
+
+    for(let i=0;i<westAmericas;i++){
+      base.push({lat: lerp(-52, 58, i / Math.max(1, westAmericas-1)), lon: -128 + Math.sin(i*0.7 + ma*0.03)*4});
+    }
+    for(let i=0;i<southPacific;i++){
+      base.push({lat: lerp(-48, -12, i / Math.max(1, southPacific-1)), lon: 164 + Math.sin(i*0.9)*5});
+    }
+    for(let i=0;i<austral;i++){
+      base.push({lat: lerp(-46, -30, i / Math.max(1, austral-1)), lon: 115 + Math.cos(i*0.8)*6});
+      base.push({lat: lerp(-52, -36, i / Math.max(1, austral-1)), lon: -72 + Math.sin(i*0.8)*4});
+    }
+    if(t < 0.45){
+      for(const b of base){
+        b.lon = lerp(25, b.lon, smooth((t - 0.18) / 0.27));
+        b.lat = lerp(-18 + Math.sin(b.lon)*4, b.lat, smooth((t - 0.18) / 0.27));
+      }
+    }
+    return base;
+  }
+
+  function drawKelp(cx, cy, radius, ma){
+    const {kelp} = getEarthMetrics(ma);
+    if(kelp <= 0.01) return;
+    const seeds = kelpCoastSeeds(ma);
+    ctx.save();
+    for(let i=0;i<seeds.length;i++){
+      const s = seeds[i];
+      const p = project(latLonToVec(s.lat, s.lon), radius, cx, cy);
+      if(p.z <= 0) continue;
+      const len = 5 + kelp * 12 + (i % 4);
+      const sway = Math.sin(state.time*0.003 + i*1.2) * (1.5 + kelp*2.5);
+      ctx.strokeStyle = `rgba(215,255,140,${0.15 + kelp*0.48})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.quadraticCurveTo(p.x + sway*0.7, p.y - len*0.55, p.x + sway, p.y - len);
+      ctx.stroke();
+      if(i % 3 === 0){
+        ctx.fillStyle = `rgba(235,255,170,${0.18 + kelp*0.25})`;
+        ctx.fillRect(p.x - 1, p.y - len, 2, 2);
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawFaults(cx, cy, radius, ma){
+    const t = easeEra(ma);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(60,180,100,0.24)';
+    ctx.lineWidth = 1;
+    const fractures = 7;
+    for(let i=0;i<fractures;i++){
+      const lon0 = -160 + i * (320 / (fractures-1)) + Math.sin(i*0.9 + ma*0.03) * 12 * t;
+      const lat0 = -60 + Math.cos(i*1.7 + ma*0.02) * 20;
+      ctx.beginPath();
+      let started = false;
+      for(let step=0; step<48; step++){
+        const u = step / 47;
+        const lon = lon0 + Math.sin(u*8 + i) * 8 * t;
+        const lat = lat0 + (u - 0.5) * 120 + Math.cos(u*7 + i*0.3) * 6;
+        const p = project(latLonToVec(lat, lon), radius, cx, cy);
+        if(p.z <= 0){ started = false; continue; }
+        if(!started){ ctx.moveTo(p.x, p.y); started = true; }
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawAtmosphericBands(cx, cy, radius, ma){
+    const {complexity} = getEarthMetrics(ma);
+    ctx.save();
+    for(let i=0;i<4;i++){
+      ctx.beginPath();
+      const rr = radius * (1.02 + i*0.018 + Math.sin(state.time*0.0012 + i) * 0.002);
+      ctx.arc(cx, cy, rr, 0, Math.PI*2);
+      ctx.strokeStyle = `rgba(140,255,190,${0.03 + complexity*0.04})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawLabels(cx, cy, radius, ma){
+    const labels = [];
+    const t = easeEra(ma);
+    if(ma > 165){
+      labels.push({name:'PANGEA', lat:4, lon:18});
+      labels.push({name:'PROTO-TETHYS', lat:18, lon:76});
+      labels.push({name:'SOUTHERN MASS', lat:-35, lon:28});
+    } else if(ma > 80){
+      labels.push({name:'LAURASIA', lat:35, lon:-8});
+      labels.push({name:'GONDWANA BREAKUP', lat:-18, lon:16});
+      labels.push({name:'TROPICAL BELT', lat:0, lon:95});
+    } else {
+      labels.push({name:'RAINFOREST ARC', lat:-4, lon:-55});
+      labels.push({name:'KELP RICH COASTS', lat:32, lon:-135});
+      labels.push({name:'MODERN BASINS', lat:10, lon:22});
+    }
+
+    ctx.save();
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'center';
+    for(const label of labels){
+      const p = project(latLonToVec(label.lat, label.lon + t*4), radius, cx, cy);
+      if(p.z <= 0) continue;
+      ctx.fillStyle = 'rgba(184,255,209,0.8)';
+      ctx.fillText(label.name, p.x, p.y);
+      ctx.strokeStyle = 'rgba(90,255,140,0.18)';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y+6, 2, 0, Math.PI*2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function render(){
+    const w = state.w, h = state.h;
+    const cx = w * 0.5;
+    const cy = h * 0.54;
+    const radius = Math.min(w, h) * 0.26 * state.zoom;
+
+    ctx.clearRect(0, 0, w, h);
+
+    drawStars();
+    drawSphereGlow(cx, cy, radius);
+    drawSphere(cx, cy, radius);
+    drawAtmosphericBands(cx, cy, radius, state.ma);
+    drawBackgroundGrid(cx, cy, radius);
+    drawFaults(cx, cy, radius, state.ma);
+    for(const c of continents) drawContinent(c, cx, cy, radius, state.ma);
+    drawRainforestField(cx, cy, radius, state.ma);
+    drawKelp(cx, cy, radius, state.ma);
+    drawLabels(cx, cy, radius, state.ma);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(200,255,220,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - radius*1.35, cy);
+    ctx.lineTo(cx + radius*1.35, cy);
+    ctx.moveTo(cx, cy - radius*1.35);
+    ctx.lineTo(cx, cy + radius*1.35);
+    ctx.stroke();
+    ctx.restore();
+
+    if(state.glitch > 0.02){
+      const slices = 4 + Math.floor(state.glitch * 8);
+      for(let i=0;i<slices;i++){
+        const sy = Math.random() * h;
+        const sh = 4 + Math.random() * 18;
+        const dx = (Math.random() - 0.5) * 18 * state.glitch;
+        ctx.drawImage(canvas, 0, sy, w, sh, dx, sy, w, sh);
+      }
+    }
+
+    const gAlpha = 0.02 + state.glitch * 0.14;
+    ctx.fillStyle = `rgba(160,255,200,${gAlpha})`;
+    for(let i=0;i<12;i++){
+      const x = Math.random() * w;
+      const y = Math.random() * h;
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+
+  function tick(ts){
+    if(!state.lastTs) state.lastTs = ts;
+    const dt = Math.min(40, ts - state.lastTs);
+    state.lastTs = ts;
+    state.time += dt;
+
+    if(state.playing){
+      state.ma += state.direction * dt * 0.005 * state.speed;
+      if(state.ma <= 0){ state.ma = 0; state.playing = false; }
+      if(state.ma >= 240){ state.ma = 240; state.playing = false; }
+    }
+
+    if(state.autoSpin && !state.dragging){
+      state.yaw += dt * 0.00018 * (0.35 + state.speed * 0.35);
+    }
+
+    state.pitch += Math.sin(state.time * 0.00012) * 0.00008;
+    state.pitch = clamp(state.pitch, -1.25, 1.25);
+
+    state.glitch = Math.max(0, state.glitch * 0.94 - 0.002);
+    if(Math.random() < 0.012) state.glitch = Math.max(state.glitch, Math.random() * 0.8);
+
+    updateUi();
+    render();
+    requestAnimationFrame(tick);
+  }
+
+  timeSlider.addEventListener('input', () => {
+    state.ma = Number(timeSlider.value);
+    state.glitch = Math.max(state.glitch, 0.18);
+    updateUi();
+  });
+
+  document.getElementById('playBtn').addEventListener('click', () => {
+    state.playing = true;
+    state.direction = -1;
+  });
+
+  document.getElementById('reverseBtn').addEventListener('click', () => {
+    state.playing = true;
+    state.direction = 1;
+  });
+
+  document.getElementById('pauseBtn').addEventListener('click', () => {
+    state.playing = false;
+  });
+
+  document.getElementById('presentBtn').addEventListener('click', () => {
+    state.ma = 0;
+    state.playing = false;
+    state.glitch = 0.45;
+    updateUi();
+  });
+
+  document.getElementById('pangeaBtn').addEventListener('click', () => {
+    state.ma = 240;
+    state.playing = false;
+    state.glitch = 0.45;
+    updateUi();
+  });
+
+  document.getElementById('speedSelect').addEventListener('change', e => {
+    state.speed = Number(e.target.value);
+  });
+
+  document.getElementById('toggleAutoSpin').addEventListener('click', e => {
+    state.autoSpin = !state.autoSpin;
+    e.target.textContent = `AUTO-SPIN: ${state.autoSpin ? 'ON' : 'OFF'}`;
+  });
+
+  document.getElementById('toggleHud').addEventListener('click', () => {
+    hud.classList.toggle('hidden');
+  });
+
+  canvas.addEventListener('pointerdown', e => {
+    state.dragging = true;
+    state.lastX = e.clientX;
+    state.lastY = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+  });
+
+  canvas.addEventListener('pointermove', e => {
+    if(!state.dragging) return;
+    const dx = e.clientX - state.lastX;
+    const dy = e.clientY - state.lastY;
+    state.lastX = e.clientX;
+    state.lastY = e.clientY;
+    state.yaw += dx * 0.0055;
+    state.pitch += dy * 0.0045;
+    state.pitch = clamp(state.pitch, -1.3, 1.3);
+    state.autoSpin = false;
+    document.getElementById('toggleAutoSpin').textContent = 'AUTO-SPIN: OFF';
+  });
+
+  canvas.addEventListener('pointerup', () => {
+    state.dragging = false;
+  });
+
+  canvas.addEventListener('pointercancel', () => {
+    state.dragging = false;
+  });
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = Math.exp(-e.deltaY * 0.001);
+    state.zoom = clamp(state.zoom * factor, 0.7, 2.25);
+  }, {passive:false});
+
+  canvas.addEventListener('dblclick', () => {
+    state.autoSpin = !state.autoSpin;
+    document.getElementById('toggleAutoSpin').textContent = `AUTO-SPIN: ${state.autoSpin ? 'ON' : 'OFF'}`;
+  });
+
+  window.addEventListener('keydown', e => {
+    if(e.key === ' '){
+      e.preventDefault();
+      state.playing = !state.playing;
+    }
+    if(e.key.toLowerCase() === 'h') hud.classList.toggle('hidden');
+    if(e.key === 'ArrowLeft') state.yaw -= 0.08;
+    if(e.key === 'ArrowRight') state.yaw += 0.08;
+    if(e.key === 'ArrowUp') state.pitch -= 0.06;
+    if(e.key === 'ArrowDown') state.pitch += 0.06;
+    if(e.key === '+' || e.key === '=') state.zoom = clamp(state.zoom * 1.08, 0.7, 2.25);
+    if(e.key === '-' || e.key === '_') state.zoom = clamp(state.zoom / 1.08, 0.7, 2.25);
+  });
+
+  window.addEventListener('resize', resize);
+  resize();
+  updateUi();
+  requestAnimationFrame(tick);
+
+  // ── Mobile UI toggle ────────────────────────────────────────
+  // Tap the ☰ button to show/hide all panels on small screens.
+  // Also: tap anywhere on the canvas (not drag) to toggle on mobile.
+  const uiToggle = document.getElementById('ui-toggle');
+  if(uiToggle){
+    uiToggle.addEventListener('click', () => {
+      document.body.classList.toggle('ui-visible');
+      uiToggle.textContent = document.body.classList.contains('ui-visible') ? '✕' : '☰';
+    });
+  }
+
+  // Double-tap canvas to toggle UI on mobile (won't conflict with desktop dblclick for spin)
+  let tapCount = 0, tapTimer = null;
+  canvas.addEventListener('touchend', e => {
+    // Only fire if it wasn't a drag
+    if(state.dragging) return;
+    tapCount++;
+    if(tapCount === 1){
+      tapTimer = setTimeout(() => { tapCount = 0; }, 300);
+    } else if(tapCount === 2){
+      clearTimeout(tapTimer);
+      tapCount = 0;
+      // Double-tap: toggle UI on mobile, toggle spin on desktop (handled by dblclick)
+      if(window.innerWidth <= 900){
+        document.body.classList.toggle('ui-visible');
+        if(uiToggle) uiToggle.textContent = document.body.classList.contains('ui-visible') ? '✕' : '☰';
+      }
+    }
+  });
+})();
+</script></body>
+</html>
