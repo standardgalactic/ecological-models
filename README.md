@@ -1,5 +1,9 @@
 # Eco-Climate–Urban Simulator
 
+[Terrascope](https://standardgalactic.github.io/ecological-models/terrascope/) 
+
+[Urban Policy Simulator](https://standardgalactic.github.io/ecological-models/urbs/)
+
 [Field Simulator](https://standardgalactic.github.io/ecological-models/simulator/)
 
 [Embedding Collapse Simulator](https://standardgalactic.github.io/ecological-models/embedding-collapse/) 
