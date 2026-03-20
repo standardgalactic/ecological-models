@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URBS — City Policy Simulator</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+:root{
+  --bg:#0d0e0f; --bg2:#141518; --bg3:#1a1c1f; --panel:#111214;
+  --border:#232528; --brite:#2e3035;
+  --housing:#4a9eff; --hdim:#1a3a66; --hbright:#80c0ff;
+  --env:#44cc66;    --evdim:#1a5028; --evbright:#88ffaa;
+  --health:#ff8844; --hldim:#662210; --hlbright:#ffaa77;
+  --infra:#ffcc22;  --indim:#665500; --inbright:#ffee88;
+  --tax:#cc44ff;    --tdim:#440a66;  --tbright:#ee88ff;
+  --security:#ff4466; --sdim:#660a22; --sbright:#ff88aa;
+  --collapse:#ff1a1a; --cdim:#660000;
+  --phi:#60c8ff;    --phidim:#183a55;
+  --white:#e8e8e0; --dim:#383a3e; --muted:#555860;
+  --amber:#ffbb33;
+  --font-d:'Bebas Neue',sans-serif;
+  --font-b:'DM Sans',sans-serif;
+  --font-m:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--white);font-family:var(--font-b);font-size:13px;}
+
+#topbar{display:flex;align-items:center;height:44px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+#title{font-family:var(--font-d);font-size:28px;letter-spacing:4px;color:var(--white);padding:0 20px;border-right:1px solid var(--border);height:100%;display:flex;align-items:center;}
+#subtitle{font-family:var(--font-m);font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;padding:0 16px;border-right:1px solid var(--border);height:100%;display:flex;align-items:center;}
+#city-stats{display:flex;height:100%;flex:1;}
+.cstat{display:flex;flex-direction:column;justify-content:center;padding:0 14px;border-right:1px solid var(--border);min-width:88px;}
+.cstat-lbl{font-family:var(--font-m);font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:2px;}
+.cstat-val{font-family:var(--font-d);font-size:20px;line-height:1;}
+#step-disp{margin-left:auto;font-family:var(--font-m);font-size:11px;color:var(--muted);padding:0 16px;display:flex;align-items:center;border-left:1px solid var(--border);}
+
+#toolbar{display:flex;align-items:center;height:36px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;font-family:var(--font-m);}
+.tb-group{display:flex;align-items:stretch;border-right:1px solid var(--border);}
+.tb-btn{padding:0 13px;font-family:var(--font-m);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;background:transparent;border:none;color:var(--muted);height:100%;transition:all .12s;white-space:nowrap;}
+.tb-btn:hover{color:var(--white);background:var(--bg3);}
+.tb-btn.active{color:var(--white);background:var(--brite);}
+.tb-btn.run{color:var(--evbright);}
+.tb-btn.run.active{background:#0a1f10;}
+.tb-btn.danger{color:var(--security);}
+select.tb-sel{background:transparent;border:none;color:var(--amber);font-family:var(--font-m);font-size:10px;padding:0 10px;cursor:pointer;border-right:1px solid var(--border);}
+
+#main{display:grid;grid-template-columns:1fr 276px;height:calc(100vh - 80px);overflow:hidden;}
+#map-area{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);}
+#map-wrap{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:8px;background:var(--bg);position:relative;}
+#city-canvas{image-rendering:pixelated;border:1px solid var(--border);cursor:crosshair;}
+#map-legend{display:flex;gap:14px;padding:5px 12px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;flex-wrap:wrap;}
+.leg-item{display:flex;align-items:center;gap:5px;font-family:var(--font-m);font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
+.leg-swatch{width:9px;height:9px;border-radius:2px;}
+
+#sb{display:flex;flex-direction:column;overflow:hidden;}
+#inspector{padding:10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg2);}
+#inspector h3{font-family:var(--font-d);font-size:17px;letter-spacing:2px;margin-bottom:7px;}
+.insp-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;}
+.ic{background:var(--bg3);padding:4px 6px;border:1px solid var(--border);}
+.ic-lbl{font-family:var(--font-m);font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:1px;}
+.ic-val{font-family:var(--font-d);font-size:16px;}
+.ic-bar{height:2px;background:var(--border);margin-top:2px;}
+.ic-fill{height:100%;transition:width .3s;}
+
+#charts{flex:1;overflow:auto;padding:9px;}
+#charts h3{font-family:var(--font-m);font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:7px;}
+.cb{margin-bottom:8px;}
+.cl{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;}
+.clbl{font-family:var(--font-m);font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+.cval{font-family:var(--font-d);font-size:14px;}
+canvas.ch{display:block;width:100%;border:1px solid var(--border);}
+
+#policies{border-top:1px solid var(--border);padding:9px;background:#0e0f10;flex-shrink:0;}
+#policies h3{font-family:var(--font-m);font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:7px;}
+.pol-row{display:flex;align-items:center;gap:7px;margin-bottom:5px;}
+.pol-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.pol-name{font-family:var(--font-m);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);width:72px;flex-shrink:0;}
+.pol-slider{flex:1;}
+.pol-val{font-family:var(--font-d);font-size:14px;width:26px;text-align:right;flex-shrink:0;}
+
+#tooltip{position:fixed;pointer-events:none;background:rgba(10,10,12,0.96);border:1px solid var(--border);padding:8px 10px;font-family:var(--font-m);font-size:10px;color:var(--white);z-index:500;display:none;min-width:136px;}
+.tt-title{font-family:var(--font-d);font-size:16px;margin-bottom:4px;}
+.tt-row{display:flex;justify-content:space-between;gap:10px;color:var(--muted);margin-bottom:1px;}
+.tt-val{color:var(--white);}
+
+#alerts{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:4px;pointer-events:none;z-index:200;}
+.alert{font-family:var(--font-m);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:5px 14px;border:1px solid;animation:ai .3s ease;white-space:nowrap;}
+@keyframes ai{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.alert-warn{color:var(--amber);border-color:var(--indim);background:rgba(10,8,0,.92);}
+.alert-crit{color:var(--collapse);border-color:var(--cdim);background:rgba(12,0,0,.92);}
+.alert-good{color:var(--evbright);border-color:var(--evdim);background:rgba(0,10,4,.92);}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div id="title">URBS</div>
+  <div id="subtitle">Φ · v · S — City Policy Field Simulator</div>
+  <div id="city-stats">
+    <div class="cstat"><div class="cstat-lbl">Population</div><div class="cstat-val" id="sv-pop" style="color:var(--hbright)">—</div></div>
+    <div class="cstat"><div class="cstat-lbl">Φ Mean</div><div class="cstat-val" id="sv-phi" style="color:var(--phi)">—</div></div>
+    <div class="cstat"><div class="cstat-lbl">Wellbeing</div><div class="cstat-val" id="sv-well" style="color:var(--evbright)">—</div></div>
+    <div class="cstat"><div class="cstat-lbl">Inequality</div><div class="cstat-val" id="sv-ineq" style="color:var(--hlbright)">—</div></div>
+    <div class="cstat"><div class="cstat-lbl">Entropy S</div><div class="cstat-val" id="sv-ent" style="color:var(--collapse)">—</div></div>
+  </div>
+  <div id="step-disp">YEAR <span id="sn">0</span></div>
+</div>
+
+<div id="toolbar">
+  <div class="tb-group">
+    <button class="tb-btn run" id="bplay">▶ RUN</button>
+    <button class="tb-btn" id="bstep">STEP</button>
+    <button class="tb-btn danger" id="breset">RESET</button>
+  </div>
+  <div class="tb-group">
+    <select class="tb-sel" id="spd">
+      <option value="800">1×</option>
+      <option value="250" selected>4×</option>
+      <option value="60">15×</option>
+      <option value="16">MAX</option>
+    </select>
+    <select class="tb-sel" id="sz">
+      <option value="32" selected>32×32</option>
+      <option value="48">48×48</option>
+      <option value="64">64×64</option>
+    </select>
+  </div>
+  <div class="tb-group">
+    <select class="tb-sel" id="scenario">
+      <option value="blank">BLANK CITY</option>
+      <option value="sprawl">SPRAWL CRISIS</option>
+      <option value="austerity">AUSTERITY SHOCK</option>
+      <option value="boom">GROWTH BOOM</option>
+      <option value="env_collapse">ENV COLLAPSE</option>
+      <option value="balanced">BALANCED</option>
+    </select>
+    <button class="tb-btn" id="bscenario">LOAD</button>
+  </div>
+  <div class="tb-group" style="flex:1;">
+    <button class="tb-btn map-tab active" data-view="composite">COMPOSITE</button>
+    <button class="tb-btn map-tab" data-view="phi">Φ FIELD</button>
+    <button class="tb-btn map-tab" data-view="entropy">ENTROPY S</button>
+    <button class="tb-btn map-tab" data-view="population">POPULATION</button>
+    <button class="tb-btn map-tab" data-view="housing">HOUSING</button>
+    <button class="tb-btn map-tab" data-view="environment">ENV</button>
+    <button class="tb-btn map-tab" data-view="health">HEALTH</button>
+    <button class="tb-btn map-tab" data-view="wealth">WEALTH</button>
+    <button class="tb-btn map-tab" data-view="flow">FLOW v</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="map-area">
+    <div id="map-wrap">
+      <canvas id="city-canvas"></canvas>
+      <div id="alerts"></div>
+    </div>
+    <div id="map-legend">
+      <div class="leg-item"><div class="leg-swatch" style="background:var(--phi)"></div>Φ High</div>
+      <div class="leg-item"><div class="leg-swatch" style="background:var(--housing)"></div>Housing</div>
+      <div class="leg-item"><div class="leg-swatch" style="background:var(--env)"></div>Environment</div>
+      <div class="leg-item"><div class="leg-swatch" style="background:var(--health)"></div>Health</div>
+      <div class="leg-item"><div class="leg-swatch" style="background:var(--infra)"></div>Infrastructure</div>
+      <div class="leg-item"><div class="leg-swatch" style="background:var(--tax)"></div>Wealth</div>
+      <div class="leg-item"><div class="leg-swatch" style="background:var(--collapse)"></div>Collapse/S</div>
+    </div>
+  </div>
+
+  <div id="sb">
+    <div id="inspector">
+      <h3 id="insp-title">CITY OVERVIEW</h3>
+      <div class="insp-grid" id="insp-grid"></div>
+    </div>
+    <div id="charts">
+      <h3>// FIELD DYNAMICS</h3>
+      <div class="cb"><div class="cl"><span class="clbl">Φ STRUCTURAL POTENTIAL</span><span class="cval" id="cv-phi" style="color:var(--phi)">—</span></div><canvas class="ch" id="ch-phi" height="34"></canvas></div>
+      <div class="cb"><div class="cl"><span class="clbl">S ENTROPY / COLLAPSE</span><span class="cval" id="cv-ent" style="color:var(--collapse)">—</span></div><canvas class="ch" id="ch-ent" height="34"></canvas></div>
+      <div class="cb"><div class="cl"><span class="clbl">POPULATION</span><span class="cval" id="cv-pop" style="color:var(--hbright)">—</span></div><canvas class="ch" id="ch-pop" height="34"></canvas></div>
+      <div class="cb"><div class="cl"><span class="clbl">WELLBEING ω</span><span class="cval" id="cv-well" style="color:var(--evbright)">—</span></div><canvas class="ch" id="ch-well" height="34"></canvas></div>
+      <div class="cb"><div class="cl"><span class="clbl">INEQUALITY (GINI)</span><span class="cval" id="cv-ineq" style="color:var(--hlbright)">—</span></div><canvas class="ch" id="ch-ineq" height="34"></canvas></div>
+      <div class="cb"><div class="cl"><span class="clbl">Φ − S BALANCE</span><span class="cval" id="cv-bal" style="color:var(--phi)">—</span></div><canvas class="ch" id="ch-bal" height="34"></canvas></div>
+    </div>
+    <div id="policies">
+      <h3>// POLICY u(t)</h3>
+      <div class="pol-row"><div class="pol-dot" style="background:var(--housing)"></div><span class="pol-name">HOUSING</span><input type="range" class="pol-slider" id="pol-housing" min="0" max="1" step="0.01" value="0.5" style="accent-color:var(--housing)"><span class="pol-val" id="pv-housing" style="color:var(--hbright)">50</span></div>
+      <div class="pol-row"><div class="pol-dot" style="background:var(--env)"></div><span class="pol-name">ENV REG</span><input type="range" class="pol-slider" id="pol-env" min="0" max="1" step="0.01" value="0.5" style="accent-color:var(--env)"><span class="pol-val" id="pv-env" style="color:var(--evbright)">50</span></div>
+      <div class="pol-row"><div class="pol-dot" style="background:var(--health)"></div><span class="pol-name">HEALTHCARE</span><input type="range" class="pol-slider" id="pol-health" min="0" max="1" step="0.01" value="0.5" style="accent-color:var(--health)"><span class="pol-val" id="pv-health" style="color:var(--hlbright)">50</span></div>
+      <div class="pol-row"><div class="pol-dot" style="background:var(--infra)"></div><span class="pol-name">INFRA</span><input type="range" class="pol-slider" id="pol-infra" min="0" max="1" step="0.01" value="0.5" style="accent-color:var(--infra)"><span class="pol-val" id="pv-infra" style="color:var(--inbright)">50</span></div>
+      <div class="pol-row"><div class="pol-dot" style="background:var(--tax)"></div><span class="pol-name">REDISTRIB</span><input type="range" class="pol-slider" id="pol-tax" min="0" max="1" step="0.01" value="0.5" style="accent-color:var(--tax)"><span class="pol-val" id="pv-tax" style="color:var(--tbright)">50</span></div>
+      <div class="pol-row"><div class="pol-dot" style="background:var(--security)"></div><span class="pol-name">SECURITY</span><input type="range" class="pol-slider" id="pol-security" min="0" max="1" step="0.01" value="0.5" style="accent-color:var(--security)"><span class="pol-val" id="pv-security" style="color:var(--sbright)">50</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="tooltip">
+  <div class="tt-title" id="tt-name">—</div>
+  <div class="tt-row"><span>Population</span><span class="tt-val" id="tt-pop">—</span></div>
+  <div class="tt-row"><span>Φ (potential)</span><span class="tt-val" id="tt-phi">—</span></div>
+  <div class="tt-row"><span>S (entropy)</span><span class="tt-val" id="tt-ent">—</span></div>
+  <div class="tt-row"><span>Wellbeing</span><span class="tt-val" id="tt-wb">—</span></div>
+  <div class="tt-row"><span>Housing</span><span class="tt-val" id="tt-h">—</span></div>
+  <div class="tt-row"><span>Environment</span><span class="tt-val" id="tt-e">—</span></div>
+</div>
+
+<script>
+// ================================================================
+// URBS v2 — RSVP Field Theory City Simulator
+//
+// The city is a coupled (Φ, v, S) field system on a lattice.
+//
+//   Φ(x,t) = structural potential
+//           = weighted composite of housing, infrastructure,
+//             health, environment — the "capacity for order"
+//
+//   S(x,t) = entropy / collapse pressure
+//           = local incompatibility density, driven by service
+//             deficits; suppressed by strong Φ
+//
+//   v(x,t) = flow field
+//           = ∇(Φ − λS), population and capital flow along this
+//
+// Evolution equations:
+//
+//   ∂Φ/∂t = policy_injection(u) − decay(S) + diffusion(Φ) + attractor(Φ,W)
+//   ∂S/∂t = failure(Φ) − recovery(Φ) + diffusion(S)
+//   ∂P/∂t = −∇·(P·v) + growth(WB)·P − collapse_loss(S)·P
+//
+// Policy u = (housing, env, health, infra, redistribution, security)
+// Budget constraint: efficiency drops above threshold total u
+//
+// Key properties:
+//   - Positive feedback: high Φ + high wealth → self-reinforcing cores
+//   - Bidirectional collapse: recovery possible when Φ is strong enough
+//   - Floor stability: fields cannot reach zero (cities don't vanish)
+//   - Path dependence: high S degrades Φ, making recovery harder
+// ================================================================
+
+const FNAMES=['population','housing','environment','health','infrastructure','wealth','security','collapse'];
+
+let W=32,H=32,world=null,hist={},step=0,running=false,iid=null;
+let currentView='composite',selectedCell=null,lastAlert=-60;
+const HMAX=320;
+
+// ── District naming ────────────────────────────────────────────
+const PRE=['North','South','East','West','Old','New','Upper','Lower','Port','Market','Green','Stone'];
+const ROOT=['fields','gate','town','cross','bridge','hill','haven','side','grove','park','ward','end'];
+function dname(x,y){ return PRE[(x+y*3)%PRE.length]+' '+ROOT[(x*2+y)%ROOT.length]; }
+
+// ── Policy ─────────────────────────────────────────────────────
+function POL(){
+  return {
+    housing: +document.getElementById('pol-housing').value,
+    env:     +document.getElementById('pol-env').value,
+    health:  +document.getElementById('pol-health').value,
+    infra:   +document.getElementById('pol-infra').value,
+    tax:     +document.getElementById('pol-tax').value,
+    security:+document.getElementById('pol-security').value,
+  };
+}
+
+// ── Scenarios ──────────────────────────────────────────────────
+const SCENARIOS={
+  blank:       {housing:.5,env:.5,health:.5,infra:.5,tax:.5,security:.5},
+  balanced:    {housing:.55,env:.55,health:.55,infra:.55,tax:.45,security:.45},
+  sprawl:      {housing:.85,env:.10,health:.30,infra:.80,tax:.20,security:.40},
+  austerity:   {housing:.20,env:.30,health:.20,infra:.20,tax:.10,security:.60},
+  boom:        {housing:.60,env:.20,health:.40,infra:.90,tax:.30,security:.50},
+  env_collapse:{housing:.50,env:.05,health:.40,infra:.60,tax:.40,security:.40},
+};
+
+function loadScenario(name){
+  const s=SCENARIOS[name];
+  if(!s) return;
+  for(const[k,v] of Object.entries(s)){
+    const el=document.getElementById('pol-'+k);
+    if(el) el.value=v;
+  }
+  syncPol();init();
+  showAlert('SCENARIO: '+name.toUpperCase().replace('_',' '),'good');
+}
+
+// ── World init ─────────────────────────────────────────────────
+function makeWorld(w,h){
+  const f={};
+  for(const nm of FNAMES) f[nm]=new Float32Array(w*h);
+  const ix=(x,y)=>y*w+x;
+  const dist=(x,y,cx,cy)=>Math.sqrt((x-cx)**2+(y-cy)**2);
+  const cx=w/2,cy=h/2;
+
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=ix(x,y);
+    const d=dist(x,y,cx,cy);
+    const urban=Math.max(0,1-d/(w*0.45));
+    const nr=Math.random();
+
+    // Dense mixed-use center
+    f.population[i]   = Math.max(0.5, urban*8 + nr*2);
+    f.infrastructure[i]= Math.max(0.5, urban*5 + nr*1.5 + 0.5);
+    f.housing[i]      = Math.max(0.5, 3 + (Math.random()-0.5)*1.5);
+    f.wealth[i]       = Math.max(0.3, urban*4 + Math.random()*1.5);
+    f.environment[i]  = Math.max(0.5, (1-urban)*5 + Math.random()*2 + 0.5);
+    f.health[i]       = Math.max(0.5, urban*3.5 + Math.random()*1.5 + 0.5);
+    f.security[i]     = Math.max(0.3, urban*3 + Math.random()*1.5);
+    f.collapse[i]     = Math.random()*0.08;
+  }
+
+  // Seed deprived pockets — initial low-Φ basins
+  const pockets=[[Math.floor(w*0.2),Math.floor(h*0.72)],[Math.floor(w*0.76),Math.floor(h*0.62)]];
+  for(const[px,py] of pockets){
+    for(let dy=-3;dy<=3;dy++) for(let dx=-3;dx<=3;dx++){
+      const nx=Math.max(0,Math.min(w-1,px+dx)),ny=Math.max(0,Math.min(h-1,py+dy));
+      const ii=ix(nx,ny);
+      f.housing[ii]*=0.35; f.health[ii]*=0.45;
+      f.wealth[ii]*=0.25;  f.environment[ii]*=0.55;
+      f.infrastructure[ii]*=0.5;
+      f.collapse[ii]+=0.4+Math.random()*0.25;
+    }
+  }
+
+  return {f,w,h};
+}
+
+function cloneW(wr){
+  const f={};
+  for(const nm of FNAMES) f[nm]=new Float32Array(wr.f[nm]);
+  return {f,w:wr.w,h:wr.h};
+}
+
+// ── Φ field: structural potential ─────────────────────────────
+// Φ = weighted composite of service capacity fields.
+// This is the "coherence" of the neighborhood — its ability to
+// sustain ordered activity. High Φ suppresses entropy.
+function phiField(f,n){
+  const phi=new Float32Array(n);
+  for(let i=0;i<n;i++){
+    phi[i]= 0.28*f.housing[i]
+          + 0.26*f.infrastructure[i]
+          + 0.26*f.health[i]
+          + 0.20*f.environment[i];
+  }
+  return phi;
+}
+
+// ── Wellbeing field ────────────────────────────────────────────
+function wellbeingField(f,phi,n){
+  const wb=new Float32Array(n);
+  for(let i=0;i<n;i++){
+    wb[i]=Math.max(0, 0.5*Math.min(1,phi[i]/4)
+                    + 0.3*Math.min(1,f.wealth[i]/5)
+                    + 0.2*Math.min(1,f.security[i]/4)
+                    - 0.5*Math.min(1,f.collapse[i]/2));
+  }
+  return wb;
+}
+
+// ── Core step: RSVP field dynamics ────────────────────────────
+function stepWorld(wr){
+  const pol=POL();
+  const{f:fin,w,h}=wr;
+  const f={},nxt={};
+  for(const nm of FNAMES){ f[nm]=fin[nm]; nxt[nm]=new Float32Array(fin[nm]); }
+  const n=w*h;
+
+  // Budget efficiency: above threshold, policy becomes less effective
+  // (not punishing — just inefficient, producing variance not uniform damage)
+  const budget=pol.housing+pol.env+pol.health+pol.infra+pol.tax+pol.security;
+  const strain=Math.max(0,(budget-2.8)/2.8);
+  const eff=1-strain*(0.25+Math.random()*0.15);
+
+  // Pre-compute Φ and wellbeing from current state
+  const phi=phiField(f,n);
+  const wb=wellbeingField(f,phi,n);
+
+  // ── INNER CELL LOOP ────────────────────────────────────────
+  for(let i=0;i<n;i++){
+    const sigma=f.collapse[i];
+    const phiI=phi[i];
+
+    // ── POLICY INJECTION into Φ-components ──────────────────
+    // Policy u(t) drives the constituent fields of Φ.
+    // Budget strain reduces efficiency stochastically (not uniformly).
+    nxt.housing[i]       += pol.housing *0.07*eff;
+    nxt.environment[i]   += pol.env     *0.08*eff - f.population[i]*0.003;
+    nxt.health[i]        += pol.health  *0.07*eff + f.environment[i]*0.003;
+    nxt.infrastructure[i]+= pol.infra   *0.06*eff + f.wealth[i]*0.002;
+    nxt.security[i]      += pol.security*0.05*eff;
+
+    // Redistribution: pulls from wealth, boosts health+housing in poor areas
+    const redistEffect=pol.tax*(f.wealth[i]>3?0.05:0.025);
+    nxt.wealth[i]   -= redistEffect*0.25;
+    nxt.health[i]   += redistEffect*0.40;
+    nxt.housing[i]  += redistEffect*0.35;
+
+    // ── WEALTH DYNAMICS ──────────────────────────────────────
+    // Wealth grows from infrastructure × environment coupling.
+    // This is ∂W/∂t ∝ I·E — the attractor term from RSVP.
+    const wealthGrowth=f.infrastructure[i]*0.007+f.environment[i]*0.003-(1-pol.env)*0.008;
+    nxt.wealth[i]+=wealthGrowth;
+
+    // ── POSITIVE FEEDBACK (coherence wells) ──────────────────
+    // High Φ + wealth → self-reinforcing urban cores.
+    // This is what produces persistent centers rather than uniform spread.
+    if(phiI>3.5&&f.wealth[i]>3.5){
+      nxt.wealth[i]        +=0.025;
+      nxt.infrastructure[i]+=0.015;
+      nxt.housing[i]       +=0.010;
+    }
+
+    // ── FIELD DECAY ──────────────────────────────────────────
+    // Natural decay, accelerated by entropy S.
+    // Decay is weak — fields are invested resources, not transient.
+    nxt.housing[i]       *=(1-0.012-sigma*0.008);
+    nxt.environment[i]   *=(1-0.007);
+    nxt.health[i]        *=(1-0.010-sigma*0.006);
+    nxt.infrastructure[i]*=(1-0.009-sigma*0.010);
+    nxt.wealth[i]        *=(1-0.005-sigma*0.004);
+    nxt.security[i]      *=(1-0.008-sigma*0.005);
+
+    // ── ENTROPY EVOLUTION: ∂S/∂t = failure(Φ) − recovery(Φ) ─
+    // Failure field: rises where Φ components fall below viability
+    const failure=
+      Math.max(0,1.6-f.housing[i])      *0.045+
+      Math.max(0,1.2-f.health[i])       *0.055+
+      Math.max(0,1.2-f.infrastructure[i])*0.045+
+      Math.max(0,0.8-f.environment[i])  *0.035+
+      Math.max(0,0.6-f.security[i])     *0.025;
+
+    // Inequality amplifier: wealth concentration without services → unrest
+    const ineqStress=(f.wealth[i]>5&&f.housing[i]<2)?0.06:0;
+
+    // Congestion: high density degrades environment and adds to entropy
+    const congestion=Math.max(0,f.population[i]-8)*0.012;
+    nxt.environment[i]-=Math.max(0,f.population[i]-8)*0.025;
+
+    // Recovery field: proportional to Φ strength
+    // Harder to recover when already deeply collapsed (σ dampens recovery)
+    const recovery=0.045*Math.min(1,phiI/3.5)*(1-sigma*0.45);
+
+    nxt.collapse[i]+=failure+ineqStress+congestion;
+    nxt.collapse[i]-=recovery;
+    nxt.collapse[i]=Math.max(0,Math.min(3,nxt.collapse[i]));
+
+    // ── HIGH-ENTROPY STRUCTURAL DAMAGE ───────────────────────
+    // Past σ=0.8: irreversible damage begins (ruins persist)
+    if(sigma>0.8){
+      nxt.infrastructure[i]*=0.988;
+      nxt.housing[i]       *=0.992;
+      nxt.health[i]        *=0.992;
+    }
+
+    // ── FLOOR STABILITY ───────────────────────────────────────
+    // Cities don't vanish. Floors prevent total annihilation and
+    // make recovery possible (there's always something to build on).
+    nxt.housing[i]       =Math.max(0.25,nxt.housing[i]);
+    nxt.environment[i]   =Math.max(0.20,nxt.environment[i]);
+    nxt.health[i]        =Math.max(0.20,nxt.health[i]);
+    nxt.infrastructure[i]=Math.max(0.25,nxt.infrastructure[i]);
+    nxt.wealth[i]        =Math.max(0.10,nxt.wealth[i]);
+    nxt.security[i]      =Math.max(0.15,nxt.security[i]);
+  }
+
+  // ── POPULATION DYNAMICS: ∂P/∂t = −∇·(Pv) + r(WB)·P ──────
+  // v(x) = ∇(Φ − λS): population flows toward high Φ, away from S.
+  // Natural growth/decay depends on local wellbeing.
+  const phiNxt=phiField(nxt,n); // use updated phi for next-step flow
+  const popDst=new Float32Array(n);
+
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=y*w+x;
+
+    // Natural growth: population grows where wellbeing > 0.4, shrinks below
+    const gr=f.population[i]*(0.012*wb[i]-0.005);
+    const popI=Math.max(0,f.population[i]+gr);
+
+    // Migration: fraction moves along ∇(Φ−S)
+    const migrants=popI*0.06;
+    const stay=popI*(1-0.06);
+
+    // Score = Φ − λS (flow potential)
+    const scoreI=phiNxt[i]-0.8*f.collapse[i];
+    let best=scoreI, bj=i;
+    for(const[dx,dy]of[[-1,0],[1,0],[0,-1],[0,1],[1,1],[-1,-1],[1,-1],[-1,1]]){
+      const nx=(x+dx+w)%w,ny=(y+dy+h)%h,j=ny*w+nx;
+      const score=phiNxt[j]-0.8*nxt.collapse[j];
+      if(score>best){best=score;bj=j;}
+    }
+
+    popDst[i]+=stay;
+    // Transport loss to collapse cells
+    const arrivalFactor=1-nxt.collapse[bj]*0.2;
+    if(bj!==i) popDst[bj]+=migrants*Math.max(0.5,arrivalFactor);
+    else popDst[i]+=migrants;
+  }
+  nxt.population=popDst;
+
+  // ── COLLAPSE DIFFUSION: D_S ∇²S ───────────────────────────
+  // Spreads along weakest structural corridors.
+  // Asymmetric: flows toward low-Φ neighbors.
+  const cs=nxt.collapse,cd=new Float32Array(n);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=y*w+x;
+    const base=0.020;
+    // Weakness increases spread rate into fragile neighbors
+    const weak=Math.max(0,(2.5-phiNxt[i])/2.5)*0.5;
+    const sp=base*(1+weak);
+    let v=cs[i]*(1-4*sp*0.9);
+    // Slightly directional: flows down-slope of Φ
+    const nbs=[((y+h-1)%h)*w+x, ((y+1)%h)*w+x, y*w+((x+w-1)%w), y*w+((x+1)%w)];
+    for(const j of nbs){
+      const nbWeak=Math.max(1,2-phiNxt[j]);
+      v+=cs[j]*sp*nbWeak*0.5;
+    }
+    cd[i]=Math.max(0,Math.min(3,v));
+  }
+  nxt.collapse=cd;
+
+  return{f:nxt,w,h};
+}
+
+// ── Derived stats ──────────────────────────────────────────────
+function fsum(a){let s=0;for(let i=0;i<a.length;i++)s+=a[i];return s;}
+function fmean(a){return fsum(a)/a.length;}
+
+function gini(arr){
+  const s=[...arr].sort((a,b)=>a-b);
+  const n=s.length,m=fmean(s)+0.001;
+  let g=0;
+  for(let i=0;i<n;i++) g+=(2*(i+1)-n-1)*s[i];
+  return Math.abs(g/(n*n*m));
+}
+
+function cityStats(f,w,h){
+  const n=w*h;
+  const phi=phiField(f,n);
+  const wb=wellbeingField(f,phi,n);
+  return {
+    population:fsum(f.population),
+    phi:fmean(phi),
+    wellbeing:fmean(wb),
+    inequality:gini(f.wealth),
+    entropy:fmean(f.collapse),
+    balance:fmean(phi)-fmean(f.collapse),
+  };
+}
+
+// ── Color mapping ──────────────────────────────────────────────
+function lerp3(a,b,t){return[a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1]),a[2]+t*(b[2]-a[2])];}
+function clamp01(v){return Math.max(0,Math.min(1,v));}
+
+function cellColor(f,phi,i,view){
+  const sigma=f.collapse[i];
+  const burnMix=Math.min(1,Math.max(0,(sigma-0.4)*1.2));
+
+  let rgb;
+  if(view==='composite'){
+    const p=clamp01(phi[i]/5);
+    const s=clamp01(sigma/2);
+    const w=clamp01(f.wealth[i]/7);
+    const e=clamp01(f.environment[i]/6);
+    const r=Math.floor(20+p*70+w*100+s*140);
+    const g=Math.floor(15+e*100+p*60-s*60);
+    const b=Math.floor(20+p*120-w*30-s*50);
+    rgb=[Math.min(255,r),Math.max(0,g),Math.max(0,b)];
+  } else if(view==='phi'){
+    const t=clamp01(phi[i]/5);
+    rgb=lerp3([8,12,20],[80,200,255],t);
+  } else if(view==='entropy'){
+    const t=clamp01(sigma/2);
+    rgb=lerp3([8,14,12],[255,20,20],t);
+  } else if(view==='population'){
+    const t=clamp01(f.population[i]/12);
+    rgb=lerp3([8,12,20],[140,200,255],t);
+  } else if(view==='housing'){
+    const t=clamp01(f.housing[i]/6);
+    rgb=lerp3([8,14,30],[70,155,255],t);
+  } else if(view==='environment'){
+    const t=clamp01(f.environment[i]/6);
+    rgb=lerp3([20,10,8],[60,200,90],t);
+  } else if(view==='health'){
+    const t=clamp01(f.health[i]/5);
+    rgb=lerp3([20,8,6],[255,130,60],t);
+  } else if(view==='wealth'){
+    const t=clamp01(f.wealth[i]/8);
+    rgb=lerp3([10,6,18],[190,60,255],t);
+  } else if(view==='flow'){
+    // Flow view: color by ∇(Φ−S) magnitude — shows movement pressure
+    rgb=[20,20,30]; // fallback, computed per-cell below
+    const n=W*H;
+    const phiArr=phiField(f,n);
+    const x=i%W,y=Math.floor(i/W);
+    const r=(x+1<W)?y*W+x+1:i, l=(x>0)?y*W+x-1:i;
+    const d=(y+1<H)?(y+1)*W+x:i, u=(y>0)?(y-1)*W+x:i;
+    const dPhiX=(phiArr[r]-phiArr[l])*0.5-(f.collapse[r]-f.collapse[l])*0.4;
+    const dPhiY=(phiArr[d]-phiArr[u])*0.5-(f.collapse[d]-f.collapse[u])*0.4;
+    const mag=Math.min(1,Math.sqrt(dPhiX*dPhiX+dPhiY*dPhiY)*2);
+    const ang=(Math.atan2(dPhiY,dPhiX)+Math.PI)/(2*Math.PI);
+    // Hue from angle, brightness from magnitude
+    const h6=ang*6,hi=Math.floor(h6),f6=h6-hi;
+    const v=Math.floor(60+mag*195);
+    const p2=Math.floor(v*(1-0.7)),q2=Math.floor(v*(1-0.7*f6)),t2=Math.floor(v*(1-0.7*(1-f6)));
+    const hrgb=[[v,t2,p2],[q2,v,p2],[p2,v,t2],[p2,q2,v],[t2,p2,v],[v,p2,q2]][hi%6];
+    rgb=hrgb||[40,40,60];
+  } else {
+    rgb=[30,32,38];
+  }
+
+  // Collapse overlay: red burn on all views except entropy
+  if(view!=='entropy' && burnMix>0){
+    rgb[0]=Math.min(255,rgb[0]+burnMix*180);
+    rgb[1]=Math.floor(rgb[1]*(1-burnMix*0.65));
+    rgb[2]=Math.floor(rgb[2]*(1-burnMix*0.70));
+  }
+  return rgb;
+}
+
+// ── Render map ─────────────────────────────────────────────────
+function renderMap(){
+  const canvas=document.getElementById('city-canvas');
+  const wrap=document.getElementById('map-wrap');
+  const md=Math.min(wrap.clientWidth-20,wrap.clientHeight-20);
+  const cp=Math.max(1,Math.floor(md/W));
+  canvas.width=cp*W; canvas.height=cp*H;
+  canvas.style.width=cp*W+'px'; canvas.style.height=cp*H+'px';
+  const ctx=canvas.getContext('2d');
+  const f=world.f,n=W*H;
+  const phi=phiField(f,n);
+
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const i=y*W+x;
+    const[r,g,b]=cellColor(f,phi,i,currentView);
+    ctx.fillStyle=`rgb(${r},${g},${b})`;
+    ctx.fillRect(x*cp,y*cp,cp,cp);
+  }
+
+  // Population dots on composite/population views
+  if(currentView==='composite'||currentView==='population'){
+    let maxP=0;for(let i=0;i<n;i++) if(f.population[i]>maxP)maxP=f.population[i];
+    ctx.fillStyle='rgba(200,230,255,0.55)';
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+      const i=y*W+x;
+      const pr=Math.max(0.4,(f.population[i]/Math.max(1,maxP))*cp*0.38);
+      if(pr<0.7||f.population[i]<0.4) continue;
+      ctx.beginPath();ctx.arc(x*cp+cp/2,y*cp+cp/2,pr,0,Math.PI*2);ctx.fill();
+    }
+  }
+
+  // Flow arrows on flow view
+  if(currentView==='flow'){
+    ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1;
+    for(let y=0;y<H;y+=2) for(let x=0;x<W;x+=2){
+      const i=y*W+x;
+      const r=(x+1<W)?y*W+x+1:i,l=(x>0)?y*W+x-1:i;
+      const d=(y+1<H)?(y+1)*W+x:i,u=(y>0)?(y-1)*W+x:i;
+      const dx=(phi[r]-phi[l])-(f.collapse[r]-f.collapse[l])*0.4;
+      const dy=(phi[d]-phi[u])-(f.collapse[d]-f.collapse[u])*0.4;
+      const mag=Math.sqrt(dx*dx+dy*dy);
+      if(mag<0.1) continue;
+      const scale=cp*0.8/Math.max(0.5,mag);
+      const cx2=x*cp+cp/2,cy2=y*cp+cp/2;
+      ctx.beginPath();ctx.moveTo(cx2,cy2);ctx.lineTo(cx2+dx*scale,cy2+dy*scale);ctx.stroke();
+    }
+  }
+
+  // Selected cell
+  if(selectedCell){
+    const{x,y}=selectedCell;
+    ctx.strokeStyle='#ffffff';ctx.lineWidth=Math.max(1,cp*0.12);
+    ctx.strokeRect(x*cp+1,y*cp+1,cp-2,cp-2);
+  }
+}
+
+// ── Charts ─────────────────────────────────────────────────────
+function renderChart(canvas,data,color,lbl){
+  const CW=canvas.parentElement.clientWidth||258,CH=34;
+  canvas.width=CW;canvas.height=CH;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#0d0e0f';ctx.fillRect(0,0,CW,CH);
+  if(data.length<2){if(lbl)lbl.textContent='—';return;}
+  let mn=Infinity,mx=-Infinity;
+  for(const v of data){if(v<mn)mn=v;if(v>mx)mx=v;}
+  if(mx-mn<0.001){mn-=0.1;mx+=0.1;}
+  if(mn<0){
+    const zy=CH-((0-mn)/(mx-mn))*CH;
+    ctx.strokeStyle='#232528';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,zy);ctx.lineTo(CW,zy);ctx.stroke();
+  }
+  ctx.beginPath();
+  for(let i=0;i<data.length;i++){
+    const px=(i/(data.length-1))*CW,py=CH-((data[i]-mn)/(mx-mn))*(CH-3)-2;
+    i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  }
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+  if(lbl) lbl.textContent=data[data.length-1].toFixed(2);
+}
+
+function renderAllCharts(){
+  renderChart(document.getElementById('ch-phi'),  hist.phi, '#60c8ff',document.getElementById('cv-phi'));
+  renderChart(document.getElementById('ch-ent'),  hist.ent, '#ff1a1a',document.getElementById('cv-ent'));
+  renderChart(document.getElementById('ch-pop'),  hist.pop, '#80c0ff',document.getElementById('cv-pop'));
+  renderChart(document.getElementById('ch-well'), hist.well,'#88ffaa',document.getElementById('cv-well'));
+  renderChart(document.getElementById('ch-ineq'), hist.ineq,'#ffaa77',document.getElementById('cv-ineq'));
+  renderChart(document.getElementById('ch-bal'),  hist.bal, '#60c8ff',document.getElementById('cv-bal'));
+}
+
+// ── Stats ──────────────────────────────────────────────────────
+function renderStats(){
+  const s=cityStats(world.f,W,H);
+  document.getElementById('sv-pop').textContent=Math.round(s.population);
+  document.getElementById('sv-phi').textContent=s.phi.toFixed(2);
+  document.getElementById('sv-well').textContent=(s.wellbeing*100).toFixed(0)+'%';
+  document.getElementById('sv-ineq').textContent=s.inequality.toFixed(2);
+  const se=document.getElementById('sv-ent');
+  se.textContent=s.entropy.toFixed(3);
+  se.style.color=s.entropy>0.5?'var(--collapse)':s.entropy>0.2?'var(--amber)':'var(--evbright)';
+}
+
+function renderInspector(){
+  const f=world.f;
+  const n=W*H;
+  const phi=phiField(f,n);
+  let x,y,i,title;
+  if(selectedCell){x=selectedCell.x;y=selectedCell.y;i=y*W+x;title=dname(x,y);}
+  else{x=Math.floor(W/2);y=Math.floor(H/2);i=y*W+x;title='CITY CENTER';}
+  document.getElementById('insp-title').textContent=title;
+  const fields=[
+    {nm:'Φ Potential',val:phi[i],       max:5,   color:'var(--phi)'},
+    {nm:'S Entropy',  val:f.collapse[i],max:2,   color:'var(--collapse)'},
+    {nm:'Housing',    val:f.housing[i], max:6,   color:'var(--hbright)'},
+    {nm:'Environ.',   val:f.environment[i],max:6,color:'var(--evbright)'},
+    {nm:'Health',     val:f.health[i],  max:5,   color:'var(--hlbright)'},
+    {nm:'Infra.',     val:f.infrastructure[i],max:6,color:'var(--inbright)'},
+    {nm:'Wealth',     val:f.wealth[i],  max:8,   color:'var(--tbright)'},
+    {nm:'Population', val:f.population[i],max:12,color:'var(--hbright)'},
+  ];
+  const g=document.getElementById('insp-grid');g.innerHTML='';
+  for(const fld of fields){
+    const pct=Math.min(1,fld.val/fld.max);
+    const d=document.createElement('div');d.className='ic';
+    d.innerHTML=`<div class="ic-lbl">${fld.nm}</div><div class="ic-val" style="color:${fld.color}">${fld.val.toFixed(1)}</div><div class="ic-bar"><div class="ic-fill" style="width:${(pct*100).toFixed(0)}%;background:${fld.color}"></div></div>`;
+    g.appendChild(d);
+  }
+}
+
+// ── History ────────────────────────────────────────────────────
+function initHist(){hist={phi:[],ent:[],pop:[],well:[],ineq:[],bal:[]};}
+function recHist(){
+  const s=cityStats(world.f,W,H);
+  hist.phi.push(s.phi);hist.ent.push(s.entropy);hist.pop.push(s.population);
+  hist.well.push(s.wellbeing);hist.ineq.push(s.inequality);hist.bal.push(s.balance);
+  for(const k of Object.keys(hist)) if(hist[k].length>HMAX) hist[k].shift();
+}
+
+// ── Alerts ─────────────────────────────────────────────────────
+function showAlert(msg,type){
+  const el=document.createElement('div');
+  el.className=`alert alert-${type}`;el.textContent=msg;
+  document.getElementById('alerts').appendChild(el);
+  setTimeout(()=>el.remove(),4500);
+}
+function checkAlerts(){
+  if(step-lastAlert<30) return; lastAlert=step;
+  const s=cityStats(world.f,W,H);
+  if(s.entropy>0.6)  showAlert('⚠ SYSTEMIC ENTROPY — S field critical','crit');
+  else if(s.entropy>0.35) showAlert('ENTROPY RISING — service margins thinning','warn');
+  if(s.inequality>0.58) showAlert('INEQUALITY THRESHOLD — unrest pressure','warn');
+  if(s.phi<1.5)    showAlert('Φ COLLAPSE — structural potential failing','crit');
+  if(s.phi>3.0&&s.entropy<0.15) showAlert('CITY STABLE — Φ dominant, S low','good');
+}
+
+// ── Tooltip ────────────────────────────────────────────────────
+function showTooltip(e,x,y){
+  const i=y*W+x,f=world.f;
+  const phi=phiField(f,W*H);
+  const wb=wellbeingField(f,phi,W*H);
+  document.getElementById('tt-name').textContent=dname(x,y);
+  document.getElementById('tt-pop').textContent=f.population[i].toFixed(1);
+  document.getElementById('tt-phi').textContent=phi[i].toFixed(2);
+  document.getElementById('tt-ent').textContent=f.collapse[i].toFixed(3);
+  document.getElementById('tt-wb').textContent=(wb[i]*100).toFixed(0)+'%';
+  document.getElementById('tt-h').textContent=f.housing[i].toFixed(1);
+  document.getElementById('tt-e').textContent=f.environment[i].toFixed(1);
+  const tt=document.getElementById('tooltip');
+  tt.style.display='block';tt.style.left=(e.clientX+14)+'px';tt.style.top=(e.clientY-10)+'px';
+}
+
+// ── Tick ───────────────────────────────────────────────────────
+function tick(){
+  world=stepWorld(world);step++;recHist();
+  document.getElementById('sn').textContent=step;
+  renderMap();renderAllCharts();renderStats();renderInspector();checkAlerts();
+}
+
+// ── Init ───────────────────────────────────────────────────────
+function init(){
+  W=parseInt(document.getElementById('sz').value);H=W;
+  world=makeWorld(W,H);step=0;selectedCell=null;lastAlert=-60;
+  initHist();recHist();
+  renderMap();renderAllCharts();renderStats();renderInspector();
+  setTimeout(()=>{renderMap();renderAllCharts();},60);
+}
+
+// ── Controls ───────────────────────────────────────────────────
+const pb=document.getElementById('bplay');
+pb.addEventListener('click',()=>{
+  running=!running;
+  if(running){pb.textContent='⏸ PAUSE';pb.classList.add('active');iid=setInterval(tick,parseInt(document.getElementById('spd').value));}
+  else{pb.textContent='▶ RUN';pb.classList.remove('active');clearInterval(iid);}
+});
+document.getElementById('bstep').addEventListener('click',()=>{if(!running)tick();});
+document.getElementById('breset').addEventListener('click',()=>{
+  running=false;clearInterval(iid);pb.textContent='▶ RUN';pb.classList.remove('active');init();
+});
+document.getElementById('spd').addEventListener('change',()=>{
+  if(running){clearInterval(iid);iid=setInterval(tick,parseInt(document.getElementById('spd').value));}
+});
+document.getElementById('sz').addEventListener('change',()=>{
+  running=false;clearInterval(iid);pb.textContent='▶ RUN';pb.classList.remove('active');init();
+});
+document.getElementById('bscenario').addEventListener('click',()=>{
+  loadScenario(document.getElementById('scenario').value);
+});
+
+// View tabs
+document.querySelectorAll('.map-tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    currentView=btn.dataset.view;
+    document.querySelectorAll('.map-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderMap();
+  });
+});
+
+// Map interaction
+const canvas=document.getElementById('city-canvas');
+canvas.addEventListener('mousemove',e=>{
+  const r=canvas.getBoundingClientRect();
+  const cp=canvas.width/W;
+  const x=Math.floor((e.clientX-r.left)/cp),y=Math.floor((e.clientY-r.top)/cp);
+  if(x>=0&&y>=0&&x<W&&y<H) showTooltip(e,x,y);
+  else document.getElementById('tooltip').style.display='none';
+});
+canvas.addEventListener('mouseleave',()=>document.getElementById('tooltip').style.display='none');
+canvas.addEventListener('click',e=>{
+  const r=canvas.getBoundingClientRect();
+  const cp=canvas.width/W;
+  const x=Math.floor((e.clientX-r.left)/cp),y=Math.floor((e.clientY-r.top)/cp);
+  if(x>=0&&y>=0&&x<W&&y<H){
+    selectedCell=(selectedCell&&selectedCell.x===x&&selectedCell.y===y)?null:{x,y};
+    renderMap();renderInspector();
+  }
+});
+window.addEventListener('resize',()=>renderMap());
+
+// Policy sliders
+function syncPol(){
+  for(const nm of['housing','env','health','infra','tax','security']){
+    const v=+document.getElementById('pol-'+nm).value;
+    document.getElementById('pv-'+nm).textContent=Math.round(v*100);
+  }
+}
+for(const nm of['housing','env','health','infra','tax','security']){
+  document.getElementById('pol-'+nm).addEventListener('input',syncPol);
+}
+
+syncPol();init();
+</script>
+</body>
+</html>
