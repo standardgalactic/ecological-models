@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Embedding Collapse</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+:root{
+  --bg:#060608;--bg2:#0a0a0e;--bg3:#0e0e14;--panel:#0c0c12;
+  --border:#1e1e2e;--brite:#2e2e42;
+  --modal:#7060ff;--mdim:#302868;--mbright:#a090ff;
+  --epist:#20c8a0;--edim:#0a5040;--ebright:#40ffcc;
+  --agency:#ff8030;--adim:#662010;--abright:#ffb060;
+  --index:#ff3090;--idim:#661030;--ibright:#ff60b0;
+  --collapse:#ff2020;--cdim:#661010;
+  --mpk:#40ff80;--mkdim:#105028;
+  --white:#d8d8e8;--dim:#383848;
+  --amber:#ffbc30;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--white);font-family:'Share Tech Mono',monospace;font-size:12px;min-height:100vh;overflow:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0,rgba(0,0,0,.14) 1px,transparent 1px,transparent 3px);pointer-events:none;z-index:1000;}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.72) 100%);pointer-events:none;z-index:999;}
+
+/* ── HEADER ── */
+#hdr{display:flex;align-items:center;gap:14px;padding:9px 16px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+#hdr h1{font-family:'VT323',monospace;font-size:26px;color:var(--modal);text-shadow:0 0 12px #7060ff55;letter-spacing:3px;}
+.sub{color:var(--dim);font-size:10px;letter-spacing:2px;text-transform:uppercase;}
+#stepd{margin-left:auto;font-family:'VT323',monospace;font-size:21px;color:var(--amber);}
+
+/* ── CONTROLS ── */
+#ctrl{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:7px 16px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+button{background:var(--bg3);border:1px solid var(--brite);color:var(--modal);font-family:'Share Tech Mono',monospace;font-size:11px;padding:4px 11px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .1s;}
+button:hover{background:var(--mdim);border-color:var(--modal);box-shadow:0 0 8px #7060ff44;}
+button.active{background:var(--mdim);border-color:var(--modal);}
+button.danger{color:var(--collapse);border-color:var(--cdim);}
+button.danger:hover{background:#1a0808;border-color:var(--collapse);}
+button.mpk-btn{color:var(--mpk);border-color:var(--mkdim);}
+button.mpk-btn:hover{background:var(--mkdim);border-color:var(--mpk);box-shadow:0 0 8px #40ff8044;}
+button.mpk-btn.active{background:var(--mkdim);border-color:var(--mpk);}
+.cgrp{display:flex;align-items:center;gap:5px;border-left:1px solid var(--border);padding-left:8px;}
+.clbl{color:var(--dim);font-size:10px;letter-spacing:1px;}
+select{background:var(--bg3);border:1px solid var(--brite);color:var(--amber);font-family:'Share Tech Mono',monospace;font-size:11px;padding:3px 6px;cursor:pointer;}
+
+/* ── SCENARIO BAR ── */
+#scenbar{display:flex;align-items:stretch;border-bottom:1px solid var(--border);flex-shrink:0;}
+.scen-btn{flex:1;padding:5px 8px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;background:var(--bg2);border:none;border-right:1px solid var(--border);color:var(--dim);transition:all .15s;}
+.scen-btn:last-child{border-right:none;}
+.scen-btn:hover{color:var(--white);background:var(--bg3);}
+.scen-btn.active{color:var(--modal);background:var(--mdim);}
+
+/* ── MAIN LAYOUT ── */
+#main{display:grid;grid-template-columns:1fr 1fr 240px;height:calc(100vh - 118px);overflow:hidden;}
+
+/* ── FIELD PANELS ── */
+.field-panel{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.fp-hdr{padding:6px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;font-size:9px;letter-spacing:2px;text-transform:uppercase;}
+.fp-hdr .sym{font-family:'VT323',monospace;font-size:20px;margin-right:6px;}
+.fp-scroll{flex:1;overflow:auto;padding:8px;}
+.fg{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;}
+.fp{background:var(--panel);border:1px solid var(--border);}
+.fl{padding:3px 6px;font-size:9px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+.ft{font-family:'VT323',monospace;font-size:13px;}
+canvas.fc{display:block;width:100%;image-rendering:pixelated;}
+
+.fp-note{padding:5px 10px;font-size:9px;color:var(--dim);letter-spacing:1px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+
+/* ── SEPARATOR / COLLAPSE CHANNEL ── */
+#collapse-panel{
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+  position:relative;
+}
+#collapse-panel .fp-hdr{background:#100a0a;}
+
+/* ── SIDEBAR ── */
+#sb{display:flex;flex-direction:column;overflow:hidden;}
+#chw{flex:1;overflow:auto;padding:8px;}
+#chw h2{font-family:'VT323',monospace;font-size:14px;color:var(--dim);letter-spacing:3px;margin-bottom:6px;}
+.cb{margin-bottom:8px;}
+.cl{font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;display:flex;justify-content:space-between;}
+.cv{font-family:'VT323',monospace;font-size:13px;}
+canvas.ch{display:block;width:100%;border:1px solid var(--border);background:var(--bg);}
+
+#mpk-status{padding:8px 9px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+#mpk-status h3{font-family:'VT323',monospace;font-size:14px;color:var(--dim);letter-spacing:3px;margin-bottom:5px;}
+.mrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.mk{font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;}
+.mv{font-family:'VT323',monospace;font-size:15px;}
+#mpk-badge{padding:5px 8px;border:1px solid;font-size:10px;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:5px;transition:all .3s;}
+
+#params{border-top:1px solid var(--border);padding:8px 9px;background:#080810;flex-shrink:0;}
+#params h3{font-family:'VT323',monospace;font-size:13px;color:var(--dim);letter-spacing:3px;margin-bottom:5px;}
+.pr{margin-bottom:6px;}
+.pl{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;}
+.pv{font-family:'VT323',monospace;font-size:13px;color:var(--amber);}
+input[type=range]{width:100%;accent-color:var(--modal);}
+
+#logw{border-top:1px solid var(--border);max-height:70px;overflow:auto;padding:0 8px 5px;flex-shrink:0;}
+#log{font-size:9px;color:var(--mdim);line-height:1.7;}
+.lw{color:var(--adim)!important;}
+.lc{color:var(--cdim)!important;}
+.lm{color:var(--mkdim)!important;}
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <h1>EMBEDDING COLLAPSE</h1>
+  <span class="sub">MODAL · EPISTEMIC · AGENCY · INDEXICAL — PROXIMITY vs STRUCTURE</span>
+  <span id="stepd">T=<span id="sn">0000</span></span>
+</div>
+
+<div id="ctrl">
+  <button id="bplay">▶ RUN</button>
+  <button id="bstep">STEP</button>
+  <button id="breset" class="danger">RESET</button>
+  <div class="cgrp"><span class="clbl">SPEED</span>
+    <select id="spd"><option value="400">SLOW</option><option value="120" selected>MED</option><option value="30">FAST</option></select>
+  </div>
+  <div class="cgrp"><span class="clbl">SIZE</span>
+    <select id="sz"><option value="20" selected>20×20</option><option value="32">32×32</option></select>
+  </div>
+  <div class="cgrp">
+    <button id="bmpk" class="mpk-btn">MPK: OFF</button>
+    <span class="clbl" style="font-size:9px">MODAL PROOFING KERNEL</span>
+  </div>
+  <div class="cgrp">
+    <button id="btriplet">TRIPLET VIEW</button>
+  </div>
+</div>
+
+<div id="scenbar">
+  <button class="scen-btn active" onclick="setScenario('collapse')">COLLAPSE PRESSURE</button>
+  <button class="scen-btn" onclick="setScenario('modal')">MODAL BLURRING</button>
+  <button class="scen-btn" onclick="setScenario('agency')">AGENCY CONFLATION</button>
+  <button class="scen-btn" onclick="setScenario('indexical')">INDEXICAL DRIFT</button>
+  <button class="scen-btn" onclick="setScenario('mpk_demo')">MPK RECOVERY</button>
+</div>
+
+<div id="main">
+  <!-- LEFT: Operator fields (modal + epistemic) -->
+  <div class="field-panel" id="panel-left">
+    <div class="fp-hdr">
+      <span><span class="sym" style="color:var(--modal)">□◇</span>MODAL SPACE</span>
+      <span style="color:var(--dim);font-size:9px">NECESSITY · POSSIBILITY</span>
+    </div>
+    <div class="fp-scroll"><div class="fg" id="grid-modal"></div></div>
+    <div class="fp-note" id="note-modal">□P = necessarily P · ◇P = possibly P · COLLAPSE: □≈◇</div>
+  </div>
+
+  <!-- CENTER: Collapse + agency + indexical -->
+  <div class="field-panel" id="panel-center">
+    <div class="fp-hdr" style="background:#100a08;">
+      <span><span class="sym" style="color:var(--agency)">◻𝒊</span>AGENCY + INDEXICAL</span>
+      <span style="color:var(--dim);font-size:9px">ACTION · EVENT · SELF-REF</span>
+    </div>
+    <div class="fp-scroll"><div class="fg" id="grid-agency"></div></div>
+    <div class="fp-note" id="note-agency">stit(a,P) = a sees to it that P · EVENT ≠ ACTION · COLLAPSE: stit≈evt</div>
+  </div>
+
+  <!-- RIGHT: Sidebar -->
+  <div id="sb">
+    <div id="chw">
+      <h2>// SEMANTIC DYNAMICS</h2>
+      <div class="cb"><div class="cl"><span>COLLAPSE PRESSURE</span><span class="cv" id="cv-collapse" style="color:var(--collapse)">—</span></div><canvas class="ch" id="ch-collapse" height="40"></canvas></div>
+      <div class="cb"><div class="cl"><span>MODAL SEPARATION</span><span class="cv" id="cv-modal" style="color:var(--mbright)">—</span></div><canvas class="ch" id="ch-modal" height="40"></canvas></div>
+      <div class="cb"><div class="cl"><span>EPISTEMIC CLARITY</span><span class="cv" id="cv-epist" style="color:var(--ebright)">—</span></div><canvas class="ch" id="ch-epist" height="40"></canvas></div>
+      <div class="cb"><div class="cl"><span>AGENCY DISTINCTION</span><span class="cv" id="cv-agency" style="color:var(--abright)">—</span></div><canvas class="ch" id="ch-agency" height="40"></canvas></div>
+      <div class="cb"><div class="cl"><span>SEMANTIC ENTROPY H(t)</span><span class="cv" id="cv-entropy" style="color:var(--collapse)">—</span></div><canvas class="ch" id="ch-entropy" height="40"></canvas></div>
+      <div class="cb"><div class="cl"><span>FIDELITY Ω</span><span class="cv" id="cv-fidelity" style="color:var(--mpk)">—</span></div><canvas class="ch" id="ch-fidelity" height="40"></canvas></div>
+    </div>
+
+    <div id="mpk-status">
+      <h3>// MPK STATUS</h3>
+      <div id="mpk-badge" style="color:var(--collapse);border-color:var(--cdim)">MPK INACTIVE — COLLAPSE RISK</div>
+      <div class="mrow"><span class="mk">MODAL MARGIN</span><span class="mv" id="mv-modal" style="color:var(--mbright)">—</span></div>
+      <div class="mrow"><span class="mk">AGENCY MARGIN</span><span class="mv" id="mv-agency" style="color:var(--abright)">—</span></div>
+      <div class="mrow"><span class="mk">TRIPLET VIOLATIONS</span><span class="mv" id="mv-triplet" style="color:var(--collapse)">—</span></div>
+      <div class="mrow"><span class="mk">COLLAPSE EVENTS</span><span class="mv" id="mv-events" style="color:var(--collapse)">—</span></div>
+    </div>
+
+    <div id="params">
+      <h3>// PARAMS</h3>
+      <div class="pr"><div class="pl"><span>Collapse pressure</span><span class="pv" id="pv-cp">0.15</span></div><input type="range" id="sl-cp" min="0" max="0.5" step="0.01" value="0.15"></div>
+      <div class="pr"><div class="pl"><span>Operator decay</span><span class="pv" id="pv-od">0.02</span></div><input type="range" id="sl-od" min="0" max="0.1" step="0.005" value="0.02"></div>
+      <div class="pr"><div class="pl"><span>MPK margin strength</span><span class="pv" id="pv-mpk">0.8</span></div><input type="range" id="sl-mpk" min="0.1" max="2.0" step="0.05" value="0.8"></div>
+      <div class="pr"><div class="pl"><span>Diffusion rate</span><span class="pv" id="pv-diff">0.12</span></div><input type="range" id="sl-diff" min="0.01" max="0.3" step="0.01" value="0.06"></div>
+    </div>
+
+    <div id="logw"><div id="log"></div></div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// EMBEDDING COLLAPSE SIMULATOR
+//
+// MODEL INTERPRETATION
+//
+// Simulates the field dynamics of semantic operators in embedding space.
+//
+// Each cell represents a region of the embedding space containing:
+//   necessity   (□P)   — modal necessity operator
+//   possibility (◇P)   — modal possibility operator
+//   fact        (P)    — bare factual predicate
+//   knowledge   (K_aP) — epistemic operator: agent a knows P
+//   belief      (B_aP) — epistemic operator: agent a believes P
+//   action      (stit) — agency: agent sees to it that P
+//   event       (evt)  — bare event/occurrence (no agency)
+//   index_self  (I)    — indexical: self-reference anchor
+//   index_here  (here) — indexical: spatial anchor
+//   collapse    (σ)    — collapse pressure field
+//   mpk         (κ)    — modal proofing kernel enforcement field
+//
+// Collapse pressure σ increases when geometrically proximate operators
+// are treated as semantically interchangeable (□P ≈ ◇P, stit ≈ evt).
+//
+// MPK enforcement κ penalizes violations of frame axioms:
+//   T: □P → P (necessity implies fact)
+//   4: □P → □□P (positive introspection)
+//   Agency margin: d(stit, evt) > margin (they must stay separated)
+//
+// Triplet violation: occurs when d(anchor, decoy) < d(anchor, substitute)
+// i.e., the logically wrong term is geometrically closer than the right one.
+// ================================================================
+
+const W_INIT = 20;
+let W = W_INIT, H = W_INIT;
+let world = null, hist = {}, step = 0, running = false, iid = null;
+let mpkOn = false, tripletView = false, scenario = 'collapse';
+let collapseEvents = 0, tripletViolations = 0;
+let fm = {}, lastLog = -10;
+const HMAX = 280;
+
+// ── Field definitions ──────────────────────────────────────────
+// Each field represents a distinct semantic operator region.
+// "Collapse" is what happens when they bleed into each other.
+const FNAMES = [
+  'necessity','possibility','fact',        // modal layer
+  'knowledge','belief',                    // epistemic layer
+  'action','event',                        // agency layer (stit vs evt)
+  'index_self','index_here',              // indexical layer
+  'collapse',                              // collapse pressure σ
+  'mpk',                                   // MPK enforcement κ
+];
+
+const FCOLORS = {
+  necessity:  [[8,6,24],   [100,80,255]],
+  possibility:[[6,6,20],   [160,140,255]],
+  fact:       [[14,14,18], [210,210,230]],
+  knowledge:  [[4,22,18],  [20,200,160]],
+  belief:     [[4,16,14],  [40,240,190]],
+  action:     [[20,10,4],  [255,120,40]],
+  event:      [[16,8,4],   [200,90,30]],
+  index_self: [[20,4,14],  [255,50,145]],
+  index_here: [[16,4,10],  [210,40,120]],
+  collapse:   [[14,4,4],   [255,25,25]],
+  mpk:        [[4,18,8],   [50,255,100]],
+  grad:       [[4,4,14],   [255,195,15]],
+};
+
+const FLBL = {
+  necessity:'□P NECES', possibility:'◇P POSSI', fact:'P FACT',
+  knowledge:'K_a KNOW', belief:'B_a BELIEF',
+  action:'stit ACTION', event:'evt EVENT',
+  index_self:'I SELF', index_here:'HERE INDEX',
+  collapse:'σ COLLAPSE', mpk:'κ MPK',
+  grad:'∇σ GRAD',
+};
+
+const FCSS = {
+  necessity:'var(--mbright)', possibility:'#a0a0ff', fact:'var(--white)',
+  knowledge:'var(--ebright)', belief:'#60ffd0',
+  action:'var(--abright)', event:'#ffb060',
+  index_self:'var(--ibright)', index_here:'#ff80c0',
+  collapse:'var(--collapse)', mpk:'var(--mpk)',
+  grad:'var(--amber)',
+};
+
+// ── Scenarios ──────────────────────────────────────────────────
+const SCENARIOS = {
+  collapse: {
+    cp:0.18, od:0.02, mpkStrength:0.8, diff:0.12,
+    desc: 'High collapse pressure — operators drift toward uniformity'
+  },
+  modal: {
+    cp:0.25, od:0.015, mpkStrength:0.8, diff:0.10,
+    desc: 'Modal blurring — □P and ◇P proximity exceeds separation margin'
+  },
+  agency: {
+    cp:0.20, od:0.025, mpkStrength:0.8, diff:0.14,
+    desc: 'Agency conflation — stit(a,P) collapses into evt(P)'
+  },
+  indexical: {
+    cp:0.15, od:0.030, mpkStrength:0.8, diff:0.16,
+    desc: 'Indexical drift — I/here lose context anchoring'
+  },
+  mpk_demo: {
+    cp:0.30, od:0.02, mpkStrength:1.4, diff:0.10,
+    desc: 'MPK recovery — high pressure but strong enforcement active'
+  },
+};
+
+function setScenario(name){
+  scenario = name;
+  const s = SCENARIOS[name];
+  document.getElementById('sl-cp').value = s.cp;
+  document.getElementById('sl-od').value = s.od;
+  document.getElementById('sl-mpk').value = s.mpkStrength;
+  document.getElementById('sl-diff').value = s.diff;
+  syncPVals();
+  if(name==='mpk_demo' && !mpkOn){ toggleMPK(); }
+  document.querySelectorAll('.scen-btn').forEach(b=>b.classList.toggle('active',b.textContent.toLowerCase().includes(name.split('_')[0])));
+  addLog('SCENARIO: '+s.desc,'lm');
+  init();
+}
+
+function P(){
+  return {
+    cp:   +document.getElementById('sl-cp').value,
+    od:   +document.getElementById('sl-od').value,
+    mpk:  +document.getElementById('sl-mpk').value,
+    diff: +document.getElementById('sl-diff').value,
+  };
+}
+
+// ── World init ─────────────────────────────────────────────────
+function makeWorld(w,h){
+  const f = {};
+  for(const nm of FNAMES) f[nm] = new Float32Array(w*h);
+  const ix=(x,y)=>y*w+x;
+
+  // Modal operators — seeded in different spatial regions
+  // They SHOULD stay separated; collapse will try to merge them
+  for(let x=0;x<w/2;x++) for(let y=0;y<h/2;y++)
+    f.necessity[ix(x,y)] = 4 + Math.random()*2;
+  for(let x=w/2;x<w;x++) for(let y=0;y<h/2;y++)
+    f.possibility[ix(x,y)] = 4 + Math.random()*2;
+  for(let x=w/4;x<3*w/4;x++) for(let y=h/4;y<3*h/4;y++)
+    f.fact[ix(x,y)] += 2 + Math.random();
+
+  // Epistemic operators — upper half
+  for(let x=2;x<w-2;x++) for(let y=1;y<h/3;y++){
+    f.knowledge[ix(x,y)] = 2 + Math.random()*1.5;
+    f.belief[ix(x,y)] = 1.5 + Math.random();
+  }
+
+  // Agency operators — lower half, separated
+  for(let x=1;x<w/2-1;x++) for(let y=2*h/3;y<h;y++)
+    f.action[ix(x,y)] = 3 + Math.random()*2;
+  for(let x=w/2+1;x<w-1;x++) for(let y=2*h/3;y<h;y++)
+    f.event[ix(x,y)] = 3 + Math.random()*2;
+
+  // Indexicals — corners
+  for(let x=0;x<3;x++) for(let y=0;y<3;y++)
+    f.index_self[ix(x,y)] = 3 + Math.random();
+  for(let x=w-3;x<w;x++) for(let y=h-3;y<h;y++)
+    f.index_here[ix(x,y)] = 3 + Math.random();
+
+  // Initial low collapse
+  for(let i=0;i<w*h;i++) f.collapse[i] = 0.05 + Math.random()*0.1;
+
+  return {f,w,h};
+}
+
+function cloneW(wr){
+  const f={};
+  for(const nm of FNAMES) f[nm]=new Float32Array(wr.f[nm]);
+  return {f,w:wr.w,h:wr.h};
+}
+
+// ── Core physics ────────────────────────────────────────────────
+// The central tension: collapse pressure tries to merge operators.
+// MPK enforcement tries to keep them separated by maintaining margins.
+
+function computeSeparation(f, i, nm1, nm2){
+  // Proxy for "geometric distance" between two operators at cell i.
+  // When both are high in the same cell, separation is low → collapse risk.
+  const a = f[nm1][i], b = f[nm2][i];
+  const total = a + b + 0.001;
+  // Separation = 1 when only one is present, 0 when equal
+  return Math.abs(a - b) / total;
+}
+
+function stepWorld(wr){
+  const p = P();
+  const{f:fin,w,h} = wr;
+  const f={}, nxt={};
+  for(const nm of FNAMES){ f[nm]=fin[nm]; nxt[nm]=new Float32Array(fin[nm]); }
+
+  let newViolations = 0, collapseTypeFired = false;
+
+  for(let i=0;i<w*h;i++){
+    const x=i%w, y=Math.floor(i/w);
+
+    // ── Collapse pressure dynamics ──────────────────────────────
+    // σ rises when operators that should be distinct co-locate.
+    // This models the geometric proximity override in embedding space.
+
+    const modal_sep  = computeSeparation(f, i, 'necessity', 'possibility');
+    const agency_sep = computeSeparation(f, i, 'action', 'event');
+    const epist_sep  = computeSeparation(f, i, 'knowledge', 'belief');
+    const index_sep  = computeSeparation(f, i, 'index_self', 'index_here');
+
+    // Collapse rises when separations are low
+    const collapseRise = p.cp * (
+      (1 - modal_sep)  * (f.necessity[i]+f.possibility[i]) * 0.05 +
+      (1 - agency_sep) * (f.action[i]+f.event[i]) * 0.05 +
+      (1 - epist_sep)  * (f.knowledge[i]+f.belief[i]) * 0.04 +
+      (1 - index_sep)  * (f.index_self[i]+f.index_here[i]) * 0.04
+    );
+    nxt.collapse[i] += collapseRise;
+
+    // ── Collapse effect: operators bleed into each other ────────
+    // When σ is high, operators lose distinctiveness.
+    // This is the embedding collapse: □P and ◇P become interchangeable.
+    const sigma = f.collapse[i];
+
+    if(sigma > 0.15){
+      // Modal bleed
+      const avg_modal = (f.necessity[i]+f.possibility[i])*0.5;
+      nxt.necessity[i]  += (avg_modal-f.necessity[i])  * sigma * p.od * 0.5;
+      nxt.possibility[i]+= (avg_modal-f.possibility[i])* sigma * p.od * 0.5;
+
+      // Agency bleed: stit → evt conflation
+      const avg_agency = (f.action[i]+f.event[i])*0.5;
+      nxt.action[i]+= (avg_agency-f.action[i]) * sigma * p.od * 0.5;
+      nxt.event[i] += (avg_agency-f.event[i])  * sigma * p.od * 0.5;
+
+      // Epistemic bleed
+      const avg_epist = (f.knowledge[i]+f.belief[i])*0.5;
+      nxt.knowledge[i]+= (avg_epist-f.knowledge[i]) * sigma * p.od * 0.5;
+      nxt.belief[i]   += (avg_epist-f.belief[i])    * sigma * p.od * 0.5;
+
+      // Indexical dissolution
+      const avg_idx = (f.index_self[i]+f.index_here[i])*0.5;
+      nxt.index_self[i]+= (avg_idx-f.index_self[i]) * sigma * p.od * 0.3;
+      nxt.index_here[i]+= (avg_idx-f.index_here[i]) * sigma * p.od * 0.3;
+    }
+
+    // ── Type erasure: operator → content collapse (σ > 0.6) ────
+    // Not just blurring but ontological flattening:
+    // necessity collapses into bare fact, action into event,
+    // knowledge into mere factual predicate.
+    // This is the deep failure mode: operators disappear, only content remains.
+    if(sigma > 0.6){
+      nxt.fact[i]       += nxt.necessity[i]  * 0.20; nxt.necessity[i]  *= 0.80;
+      nxt.event[i]      += nxt.action[i]     * 0.20; nxt.action[i]     *= 0.80;
+      nxt.fact[i]       += nxt.knowledge[i]  * 0.15; nxt.knowledge[i]  *= 0.85;
+      nxt.fact[i]       += nxt.belief[i]     * 0.10; nxt.belief[i]     *= 0.90;
+      nxt.index_self[i] *= 0.92;
+      nxt.index_here[i] *= 0.92;
+      collapseTypeFired = true;
+    }
+
+    // ── Triplet violation detection ─────────────────────────────
+    // Anchor=necessity, Substitute=possibility, Decoy=fact
+    // Violation: d(nec,fact) < d(nec,poss) — fact is "closer" than possibility
+    // (using local field values as proxy for embedding distance)
+    const anchor    = nxt.necessity[i];
+    const substitute= nxt.possibility[i];
+    const decoy     = nxt.fact[i];
+    if(anchor > 0.5 && decoy > substitute * 1.1 && substitute > 0.1){
+      newViolations++;
+      nxt.collapse[i] += 0.05; // triplet violation increases local collapse
+    }
+
+    // ── Collapse-driven advection transport ────────────────────
+    // Instead of pure averaging (convergence to uniformity),
+    // high sigma drives actual movement of semantic mass to neighbors.
+    // This creates streaks, drift, and traveling collapse fronts.
+    if(sigma > 0.12){
+      const tx = x + (Math.random()<0.5?-1:1);
+      const ty = y + (Math.random()<0.5?-1:1);
+      const tnx=(tx+w)%w, tny=(ty+h)%h;
+      const j=tny*w+tnx;
+      const flow=sigma*0.05;
+      // Move semantic mass to neighbor (not average — actual transport)
+      nxt.necessity[j]  +=f.necessity[i]  *flow; nxt.necessity[i]  *=(1-flow);
+      nxt.possibility[j]+=f.possibility[i]*flow; nxt.possibility[i]*=(1-flow);
+      nxt.action[j]     +=f.action[i]     *flow; nxt.action[i]     *=(1-flow);
+      nxt.event[j]      +=f.event[i]      *flow; nxt.event[i]      *=(1-flow);
+      nxt.knowledge[j]  +=f.knowledge[i]  *flow*0.7; nxt.knowledge[i]*=(1-flow*0.7);
+      nxt.belief[j]     +=f.belief[i]     *flow*0.7; nxt.belief[i]  *=(1-flow*0.7);
+    }
+
+    // ── Nonlinear instability (symmetry breaking) ───────────────
+    // Slightly favors growth over decay under collapse pressure.
+    // Introduces asymmetry so collapse forms clusters, not uniform haze.
+    if(sigma > 0.2){
+      const boost=sigma*0.03;
+      nxt.collapse[i]+=boost*(Math.random()-0.3);
+    }
+
+    // ── MPK enforcement ─────────────────────────────────────────
+    if(mpkOn){
+      const mpkF = f.mpk[i];
+
+      // Typed subspace enforcement: penalize co-location of modal operators
+      // Frame axiom T: □P → P  (necessity implies fact, not possibility)
+      // Enforce: necessity and possibility must stay separated
+      if(modal_sep < 0.3){
+        // Push them apart
+        const push = p.mpk * (0.3 - modal_sep) * 0.15;
+        nxt.necessity[i]   += push * (f.necessity[i]   > f.possibility[i] ? 1 : -0.5);
+        nxt.possibility[i] += push * (f.possibility[i] > f.necessity[i]   ? 1 : -0.5);
+        nxt.mpk[i] += 0.02;
+        nxt.collapse[i] = Math.max(0, nxt.collapse[i] - push * 0.3);
+      }
+
+      // Agency margin enforcement: stit must be distinct from evt
+      if(agency_sep < 0.4){
+        const push = p.mpk * (0.4 - agency_sep) * 0.12;
+        nxt.action[i]+= push*(f.action[i]>f.event[i]?1:-0.5);
+        nxt.event[i] += push*(f.event[i]>f.action[i]?1:-0.5);
+        nxt.collapse[i] = Math.max(0, nxt.collapse[i] - push * 0.25);
+      }
+
+      // Indexical anchoring: prevent dissolution
+      if(f.index_self[i] > 0.5 && index_sep < 0.35){
+        nxt.index_self[i] += p.mpk * 0.04;
+        nxt.index_here[i] += p.mpk * 0.04;
+        nxt.collapse[i] = Math.max(0, nxt.collapse[i] - p.mpk * 0.02);
+      }
+
+      // Inference-time guard: if collapse exceeds threshold, suppress output
+      // (modeled as hard cap + penalty redistribution)
+      if(nxt.collapse[i] > 0.9 && mpkF > 0.5){
+        nxt.collapse[i] = 0.9; // guard fires — caps collapse
+        addLogThrottled('INFERENCE GUARD FIRED @ ('+x+','+y+')','lm');
+      }
+    }
+
+    // ── MPK field regeneration ──────────────────────────────────
+    if(mpkOn && nxt.mpk[i] < 8) nxt.mpk[i] += 0.02;
+    if(!mpkOn) nxt.mpk[i] *= 0.98; // decay when off
+
+    // ── Natural decay (operators weaken over time without reinforcement)
+    for(const nm of ['necessity','possibility','knowledge','belief','action','event','index_self','index_here']){
+      nxt[nm][i] *= (1 - 0.003 - 0.002*sigma);
+      if(nxt[nm][i]<0) nxt[nm][i]=0;
+    }
+
+    // Collapse diffuses — spreading semantic confusion
+    nxt.collapse[i] = Math.max(0, Math.min(2.0, nxt.collapse[i]));
+  }
+
+  // ── Spatial diffusion ───────────────────────────────────────
+  // Collapse spreads like heat — nearby cells catch confusion
+  const d = p.diff;
+  const src = nxt.collapse;
+  const dst = new Float32Array(w*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=y*w+x;
+    let v=src[i]*(1-4*d*0.5);
+    v+=src[((y+h-1)%h)*w+x]*d*0.3;   // anisotropic: weaker upward
+    v+=src[((y+1)%h)*w+x]*d*0.7;     // stronger downward drift
+    v+=src[y*w+((x+w-1)%w)]*d*0.45;
+    v+=src[y*w+((x+1)%w)]*d*0.55;
+    dst[i]=Math.max(0,Math.min(2.0,v));
+  }
+  nxt.collapse = dst;
+
+  tripletViolations += newViolations;
+  if(newViolations > w*h*0.05 || collapseTypeFired) collapseEvents++;
+
+  return{f:nxt,w,h};
+}
+
+// ── Derived metrics ─────────────────────────────────────────────
+function fsum(a){let s=0;for(let i=0;i<a.length;i++)s+=a[i];return s;}
+function fmean(a){return fsum(a)/a.length;}
+
+function modalSeparation(f){
+  // Mean |□-◇|/(□+◇) across all cells
+  let s=0;
+  for(let i=0;i<f.necessity.length;i++){
+    const a=f.necessity[i],b=f.possibility[i],t=a+b+0.001;
+    s+=Math.abs(a-b)/t;
+  }
+  return s/f.necessity.length;
+}
+
+function agencyDistinction(f){
+  let s=0;
+  for(let i=0;i<f.action.length;i++){
+    const a=f.action[i],b=f.event[i],t=a+b+0.001;
+    s+=Math.abs(a-b)/t;
+  }
+  return s/f.action.length;
+}
+
+function epistemicClarity(f){
+  let s=0;
+  for(let i=0;i<f.knowledge.length;i++){
+    const a=f.knowledge[i],b=f.belief[i],t=a+b+0.001;
+    s+=Math.abs(a-b)/t;
+  }
+  return s/f.knowledge.length;
+}
+
+// Semantic entropy H(t) — measures mixing of distinct operators
+// High H = operators indistinguishable = collapse
+function semanticEntropy(f){
+  const n=f.necessity.length;
+  let H=0;
+  for(let i=0;i<n;i++){
+    const vals=[f.necessity[i],f.possibility[i],f.knowledge[i],f.belief[i],f.action[i],f.event[i]];
+    const total=vals.reduce((a,b)=>a+b,0)+0.001;
+    for(const v of vals){
+      const p=v/total;
+      if(p>0.001) H -= p*Math.log2(p);
+    }
+  }
+  return H/n;
+}
+
+// Fidelity Ω: high when operators are well-separated, low when collapsed
+function fidelity(f){
+  return 100*(0.35*modalSeparation(f) + 0.3*agencyDistinction(f) + 0.2*epistemicClarity(f) - 0.15*fmean(f.collapse));
+}
+
+// ── History ─────────────────────────────────────────────────────
+function initHist(){
+  hist={collapse:[],modal:[],epist:[],agency:[],entropy:[],fidelity:[]};
+  collapseEvents=0; tripletViolations=0;
+}
+function recHist(){
+  const f=world.f;
+  hist.collapse.push(fmean(f.collapse));
+  hist.modal.push(modalSeparation(f));
+  hist.epist.push(epistemicClarity(f));
+  hist.agency.push(agencyDistinction(f));
+  hist.entropy.push(semanticEntropy(f));
+  hist.fidelity.push(fidelity(f));
+  for(const k of Object.keys(hist)) if(hist[k].length>HMAX) hist[k].shift();
+}
+
+// ── Rendering ────────────────────────────────────────────────────
+function renderField(canvas,data,key){
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d'),img=ctx.createImageData(W,H);
+  let mx=0;for(let i=0;i<data.length;i++) if(data[i]>mx) mx=data[i];
+  mx = Math.max(mx, 1.0);  // fixed scale — reveals real magnitude changes
+  const cd=FCOLORS[key]||FCOLORS.collapse;
+  for(let i=0;i<W*H;i++){
+    const t = key==='collapse'
+      ? Math.min(1, data[i] * 2.5)
+      : Math.min(1, data[i] / mx);
+    img.data[i*4]  =cd[0][0]+t*(cd[1][0]-cd[0][0]);
+    img.data[i*4+1]=cd[0][1]+t*(cd[1][1]-cd[0][1]);
+    img.data[i*4+2]=cd[0][2]+t*(cd[1][2]-cd[0][2]);
+    img.data[i*4+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+
+// Triplet view: show where decoy > substitute distance (collapse events)
+function renderTripletView(canvas){
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d'),img=ctx.createImageData(W,H);
+  const f=world.f;
+  for(let i=0;i<W*H;i++){
+    const anchor=f.necessity[i],sub=f.possibility[i],decoy=f.fact[i];
+    // violation: d(A,Decoy)<d(A,Sub) → decoy geometrically closer
+    const violation = decoy > sub*1.1 && anchor > 0.5;
+    if(violation){
+      // Red = triplet violation
+      img.data[i*4]=255;img.data[i*4+1]=30;img.data[i*4+2]=30;
+    } else {
+      // Green = correct ordering
+      const t=Math.min(1,sub/(anchor+0.001));
+      img.data[i*4]=30;img.data[i*4+1]=Math.floor(80+t*175);img.data[i*4+2]=60;
+    }
+    img.data[i*4+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+
+function renderChart(canvas,data,color,lbl){
+  const CW=canvas.parentElement.clientWidth||230,CH=40;
+  canvas.width=CW;canvas.height=CH;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#060608';ctx.fillRect(0,0,CW,CH);
+  if(data.length<2){if(lbl)lbl.textContent='—';return;}
+  let mn=Infinity,mx=-Infinity;
+  for(const v of data){if(v<mn)mn=v;if(v>mx)mx=v;}
+  if(mx-mn<0.001){mn-=0.1;mx+=0.1;}
+  if(mn<0){
+    const zy=CH-((0-mn)/(mx-mn))*CH;
+    ctx.strokeStyle='#1e1e2e';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,zy);ctx.lineTo(CW,zy);ctx.stroke();
+  }
+  ctx.beginPath();
+  for(let i=0;i<data.length;i++){
+    const px=(i/(data.length-1))*CW,py=CH-((data[i]-mn)/(mx-mn))*(CH-3)-2;
+    i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  }
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+  if(lbl) lbl.textContent=data[data.length-1].toFixed(3);
+}
+
+// ── DOM ──────────────────────────────────────────────────────────
+function buildGrids(){
+  const modalFields = ['necessity','possibility','fact','knowledge','belief','collapse'];
+  const agencyFields = ['action','event','index_self','index_here','mpk',tripletView?'grad':'collapse'];
+
+  function buildGrid(id, fields){
+    const g=document.getElementById(id);g.innerHTML='';
+    g.style.gridTemplateColumns='repeat(2,1fr)';
+    for(const nm of fields){
+      const fp=document.createElement('div');fp.className='fp';
+      fp.innerHTML=`<div class="fl"><span style="color:${FCSS[nm]}">${FLBL[nm]||nm}</span><span class="ft" id="ft${nm}" style="color:${FCSS[nm]}">—</span></div><canvas class="fc" id="fc${nm}" width="${W}" height="${H}"></canvas>`;
+      g.appendChild(fp);
+    }
+  }
+
+  buildGrid('grid-modal', modalFields);
+  buildGrid('grid-agency', agencyFields);
+}
+
+function renderGrids(){
+  const modalFields=['necessity','possibility','fact','knowledge','belief','collapse'];
+  const agencyFields=['action','event','index_self','index_here','mpk',tripletView?'grad':'collapse'];
+  const all=[...modalFields,...agencyFields];
+
+  for(const nm of all){
+    const fc=document.getElementById('fc'+nm);if(!fc) continue;
+    if(nm==='grad') renderTripletView(fc);
+    else renderField(fc,world.f[nm],nm);
+    const ft=document.getElementById('ft'+nm);
+    if(ft){let s=0;const d=world.f[nm];for(let i=0;i<d.length;i++)s+=d[i];ft.textContent=s.toFixed(0);}
+  }
+}
+
+function renderCharts(){
+  renderChart(document.getElementById('ch-collapse'),hist.collapse,'#ff2020',document.getElementById('cv-collapse'));
+  renderChart(document.getElementById('ch-modal'),   hist.modal,   '#a090ff',document.getElementById('cv-modal'));
+  renderChart(document.getElementById('ch-epist'),   hist.epist,   '#40ffcc',document.getElementById('cv-epist'));
+  renderChart(document.getElementById('ch-agency'),  hist.agency,  '#ffb060',document.getElementById('cv-agency'));
+  renderChart(document.getElementById('ch-entropy'), hist.entropy, '#ff2020',document.getElementById('cv-entropy'));
+  renderChart(document.getElementById('ch-fidelity'),hist.fidelity,'#40ff80',document.getElementById('cv-fidelity'));
+}
+
+function renderMPK(){
+  const f=world.f;
+  const ms=modalSeparation(f),ad=agencyDistinction(f),tv=tripletViolations,ce=collapseEvents;
+  document.getElementById('mv-modal').textContent=ms.toFixed(3);
+  document.getElementById('mv-modal').style.color=ms>0.4?'var(--mpk)':'var(--collapse)';
+  document.getElementById('mv-agency').textContent=ad.toFixed(3);
+  document.getElementById('mv-agency').style.color=ad>0.4?'var(--mpk)':'var(--collapse)';
+  document.getElementById('mv-triplet').textContent=tv;
+  document.getElementById('mv-events').textContent=ce;
+
+  const fd=fidelity(f);
+  const badge=document.getElementById('mpk-badge');
+  if(mpkOn){
+    badge.textContent=fd>40?'MPK ACTIVE — FIDELITY MAINTAINED':'MPK ACTIVE — UNDER PRESSURE';
+    badge.style.color=fd>40?'var(--mpk)':'var(--amber)';
+    badge.style.borderColor=fd>40?'var(--mkdim)':'var(--adim)';
+  } else {
+    badge.textContent=fd>50?'MPK INACTIVE — HOLDING':'MPK INACTIVE — COLLAPSE RISK';
+    badge.style.color=fd>50?'var(--dim)':'var(--collapse)';
+    badge.style.borderColor=fd>50?'var(--brite)':'var(--cdim)';
+  }
+}
+
+// ── Log ──────────────────────────────────────────────────────────
+let logThrottle={};
+function addLogThrottled(msg,cls){
+  if(logThrottle[msg] && step-logThrottle[msg]<30) return;
+  logThrottle[msg]=step;
+  addLog(msg,cls);
+}
+function checkLog(){
+  if(step-lastLog<20) return; lastLog=step;
+  const f=world.f;
+  const ms=modalSeparation(f),ad=agencyDistinction(f);
+  if(ms<0.2) addLog('MODAL COLLAPSE — □P≈◇P separation critical','lc');
+  if(ad<0.2) addLog('AGENCY COLLAPSE — stit≈evt distinction lost','lc');
+  if(fmean(f.collapse)>0.7) addLog('SYSTEMIC COLLAPSE — σ threshold exceeded','lc');
+  if(mpkOn && fidelity(f)>60) addLog('MPK HOLDING — fidelity maintained','lm');
+  addLog(`T=${step}  Ω=${fidelity(f).toFixed(1)}  σ=${fmean(f.collapse).toFixed(3)}  modal=${ms.toFixed(3)}`,'');
+}
+function addLog(msg,cls){
+  const el=document.getElementById('log');
+  const d=document.createElement('div');
+  if(cls)d.className=cls;d.textContent='> '+msg;
+  el.insertBefore(d,el.firstChild);
+  while(el.children.length>20)el.removeChild(el.lastChild);
+}
+
+// ── Tick ──────────────────────────────────────────────────────────
+function tick(){
+  world=stepWorld(world);step++;recHist();
+  document.getElementById('sn').textContent=String(step).padStart(4,'0');
+  renderGrids();renderCharts();renderMPK();checkLog();
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+function init(){
+  W=parseInt(document.getElementById('sz').value);H=W;
+  fm={};world=makeWorld(W,H);step=0;lastLog=-10;
+  initHist();buildGrids();
+  renderGrids();renderCharts();renderMPK();
+  addLog(`INIT ${W}×${H} · MPK ${mpkOn?'ON':'OFF'} · ${scenario.toUpperCase()}`,'lm');
+  setTimeout(()=>{renderGrids();renderCharts();},50);
+}
+
+// ── Controls ──────────────────────────────────────────────────────
+function toggleMPK(){
+  mpkOn=!mpkOn;
+  const btn=document.getElementById('bmpk');
+  btn.textContent='MPK: '+(mpkOn?'ON':'OFF');
+  btn.classList.toggle('active',mpkOn);
+  addLog('MPK '+(mpkOn?'ACTIVATED — enforcing typed subspaces':'DEACTIVATED — collapse unconstrained'), mpkOn?'lm':'lc');
+}
+
+const pb=document.getElementById('bplay');
+pb.addEventListener('click',()=>{
+  running=!running;
+  if(running){pb.textContent='⏸ PAUSE';pb.classList.add('active');iid=setInterval(tick,parseInt(document.getElementById('spd').value));}
+  else{pb.textContent='▶ RUN';pb.classList.remove('active');clearInterval(iid);}
+});
+document.getElementById('bstep').addEventListener('click',()=>{if(!running)tick();});
+document.getElementById('breset').addEventListener('click',()=>{
+  running=false;clearInterval(iid);pb.textContent='▶ RUN';pb.classList.remove('active');init();
+});
+document.getElementById('spd').addEventListener('change',()=>{
+  if(running){clearInterval(iid);iid=setInterval(tick,parseInt(document.getElementById('spd').value));}
+});
+document.getElementById('sz').addEventListener('change',()=>{
+  running=false;clearInterval(iid);pb.textContent='▶ RUN';pb.classList.remove('active');init();
+});
+document.getElementById('bmpk').addEventListener('click',toggleMPK);
+document.getElementById('btriplet').addEventListener('click',function(){
+  tripletView=!tripletView;
+  this.textContent=tripletView?'FIELD VIEW':'TRIPLET VIEW';
+  this.classList.toggle('active',tripletView);
+  buildGrids();renderGrids();
+});
+
+function syncPVals(){
+  document.getElementById('pv-cp').textContent=(+document.getElementById('sl-cp').value).toFixed(2);
+  document.getElementById('pv-od').textContent=(+document.getElementById('sl-od').value).toFixed(3);
+  document.getElementById('pv-mpk').textContent=(+document.getElementById('sl-mpk').value).toFixed(2);
+  document.getElementById('pv-diff').textContent=(+document.getElementById('sl-diff').value).toFixed(2);
+}
+for(const id of['cp','od','mpk','diff']){
+  document.getElementById('sl-'+id).addEventListener('input',syncPVals);
+}
+
+syncPVals();init();
+</script>
+</body>
+</html>
