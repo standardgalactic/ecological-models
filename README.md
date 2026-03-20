@@ -14,7 +14,7 @@
 
 # Essay
 
-[Urban Expansion in the Earth System](https://standardgalactic.github.io/ecological-models/urban_eco_climate.pdf/)
+[Urban Expansion in the Earth System](https://standardgalactic.github.io/ecological-models/urban_eco_climate.pdf)
 
 This project contains a compact set of long-horizon climate simulations exploring how atmospheric greenhouse gases, terrestrial ecosystems, and the built environment interact over centuries. The models are intentionally reduced in form and are designed to highlight feedbacks, delays, and policy-sensitive pathways rather than to produce high-resolution forecasts.
 
